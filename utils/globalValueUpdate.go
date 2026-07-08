@@ -40,3 +40,22 @@ func UpdateValueInArray[T ArrayT, V value](s []T, value V, key string, id string
 		}
 	}
 }
+
+func UpdateConsumerStatus(consumers []Types.Consumer, status Types.Status, id string) {
+	for i := range consumers {
+		consumer := &consumers[i]
+		if consumer.ConsumerId == id {
+			consumer.Status = status
+		}
+	}
+}
+
+func UpdateMessageProgress(messages []Types.Message, progress Types.MProgress, id string, consumerId string) {
+	for i := range messages {
+		message := &messages[i]
+		if message.MessageId == id {
+			message.Progress = progress
+			message.ConsumerId = consumerId
+		}
+	}
+}

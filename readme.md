@@ -82,3 +82,41 @@ root
 |
 |_ main.go (entry point)
 ```
+
+### DAY 3 - Finish Broker Version 0.1
+we changes global generic function to multiple functions which have single purpose to do like (UpdateConsumerStatus,UpdateMessageProgress). add round robin algorithm for send 1 message at a time to 1 consumer then pick different one and finish life cycle of message
+
+#### add new value in message type
+we add a new key which is consumer id so we can identify which message we need to delete from queue.
+```
+type Message struct {
+	MessageId  string
+	Content    []byte
+	Mtype      Mtype
+	Progress   MProgress
+	ConsumerId string
+}
+```
+
+#### round robin algorithm
+we fix the round robin architecture. new also is this
+```
+n := len(*consumers)
+	if n <= 0 {
+		return nil, false
+	}
+
+	for i := range *consumers {
+		consumer := (*consumers)[i]
+		if consumer.Status == Types.IDLE {
+			*consumers = append((*consumers)[:i], (*consumers)[i+1:]...)
+			*consumers = append(*consumers, consumer)
+			return &(*consumers)[len(*consumers)-1], true
+		}
+	}
+
+	return nil, false
+
+```
+
+day end with data races issue

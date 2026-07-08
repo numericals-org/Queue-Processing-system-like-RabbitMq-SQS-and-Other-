@@ -12,3 +12,21 @@ func GetEarliestMessage(Messages []Types.Message) *Types.Message {
 	}
 	return nil
 }
+
+func RemoveMessage(Messages []Types.Message, consumerId string) *[]Types.Message {
+	var index int
+
+	for i := range Messages {
+		if Messages[i].ConsumerId == consumerId && Messages[i].Progress == Types.PROCESS {
+			index = i
+		}
+	}
+
+	if len(Messages) <= 0 {
+		return nil
+	}
+
+	Messages = append(Messages[:index], Messages[index+1:]...)
+
+	return &Messages
+}

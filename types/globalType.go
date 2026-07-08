@@ -48,8 +48,9 @@ const (
 )
 
 type Message struct {
-	MessageId string
-	Content   []byte
-	Mtype     Mtype
-	Progress  MProgress
+	MessageId  string
+	Content    []byte
+	Mtype      Mtype
+	Progress   MProgress
+	ConsumerId string
 }

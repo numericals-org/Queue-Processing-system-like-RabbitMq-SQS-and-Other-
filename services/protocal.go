@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 
@@ -31,7 +30,6 @@ func Receiver(Conn net.Conn) {
 
 		switch MSG.Mtype {
 		case Types.REGISTER_P:
-			fmt.Println(MSG)
 			*producers = append(*producers, Types.Producer{
 				Conn:       Conn,
 				ProducerId: uuid.New().String(),
@@ -50,8 +48,11 @@ func Receiver(Conn net.Conn) {
 		case Types.ACKNOWLEDGE:
 			for _, val := range *consumers {
 				if Conn == val.Conn {
-					Utils.UpdateValueInArray(*consumers, Types.IDLE, "Status", val.ConsumerId)
-					// return
+					Utils.UpdateConsumerStatus(*consumers, Types.IDLE, val.ConsumerId)
+					newQueue := Utils.RemoveMessage(*Queue, val.ConsumerId)
+					if newQueue != nil {
+						Queue = newQueue
+					}
 				}
 			}
 			Constants.Notify <- true
