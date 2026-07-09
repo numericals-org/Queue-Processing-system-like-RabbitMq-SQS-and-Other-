@@ -30,22 +30,29 @@ func Receiver(Conn net.Conn) {
 
 		switch MSG.Mtype {
 		case Types.REGISTER_P:
+			Constants.Mu.Lock()
 			*producers = append(*producers, Types.Producer{
 				Conn:       Conn,
 				ProducerId: uuid.New().String(),
 			})
+			Constants.Mu.Unlock()
 		case Types.REGISTER_C:
+			Constants.Mu.Lock()
 			ID := uuid.New().String()
 			*consumers = append(*consumers, Types.Consumer{
 				Conn:       Conn,
 				ConsumerId: ID,
 				Status:     Types.IDLE,
 			})
+			Constants.Mu.Unlock()
 			Constants.Notify <- true
 		case Types.QUEUE:
+			Constants.Mu.Lock()
 			*Queue = append(*Queue, MSG)
+			Constants.Mu.Unlock()
 			Constants.Notify <- true
 		case Types.ACKNOWLEDGE:
+			Constants.Mu.Lock()
 			for _, val := range *consumers {
 				if Conn == val.Conn {
 					Utils.UpdateConsumerStatus(*consumers, Types.IDLE, val.ConsumerId)
@@ -55,6 +62,7 @@ func Receiver(Conn net.Conn) {
 					}
 				}
 			}
+			Constants.Mu.Unlock()
 			Constants.Notify <- true
 		}
 	}

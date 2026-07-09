@@ -3,6 +3,7 @@ package utils
 import (
 	"reflect"
 
+	Constants "github.com/numericals/queueSys/constant"
 	Types "github.com/numericals/queueSys/types"
 )
 
@@ -42,15 +43,18 @@ func UpdateValueInArray[T ArrayT, V value](s []T, value V, key string, id string
 }
 
 func UpdateConsumerStatus(consumers []Types.Consumer, status Types.Status, id string) {
+	// Constants.Mu.Lock()
 	for i := range consumers {
 		consumer := &consumers[i]
 		if consumer.ConsumerId == id {
 			consumer.Status = status
 		}
 	}
+	// Constants.Mu.Unlock()
 }
 
 func UpdateMessageProgress(messages []Types.Message, progress Types.MProgress, id string, consumerId string) {
+	Constants.Mu.Lock()
 	for i := range messages {
 		message := &messages[i]
 		if message.MessageId == id {
@@ -58,4 +62,5 @@ func UpdateMessageProgress(messages []Types.Message, progress Types.MProgress, i
 			message.ConsumerId = consumerId
 		}
 	}
+	Constants.Mu.Unlock()
 }
