@@ -286,3 +286,30 @@ if err != nil {
 		}
 ```
 and we also update UpdateConsumerStatus function because we implement two for loops which unnecessary at the time of acknowledgement comes to producer
+
+#### Message Retrieve Method
+we add one more method which is retrieve message method. its use when Consumer DOWN detection detect any consumer is gone down so if there any message is in progress so retrieve them and send them back in queue
+code:- 
+```
+func (b *Broker) RetrieveMessage(consumerId string) {
+	for i := range b.Messages {
+		message := b.Messages[i]
+		if message.ConsumerId == consumerId && message.Progress == types.PROCESS {
+			message.Progress = types.WAITING
+			message.ConsumerId = ""
+		}
+	}
+}
+
+```
+```
+if err != nil {
+			log.Println("Can't read Message from Connection", err)
+			b.Mu.Lock()
+			consumerId := b.UpdateConsumerStatus(types.DOWN, Conn)
+			b.RetrieveMessage(*consumerId)
+			b.Mu.Unlock()
+			b.Notify <- true
+			return
+		}
+```

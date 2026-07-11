@@ -2,6 +2,7 @@ package broker
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	types "github.com/numericals/queueSys/types"
@@ -32,6 +33,7 @@ func (b *Broker) Dispatcher() {
 			}
 			b.UpdateConsumerStatus(types.BUSY, filteredConsumer.Conn)
 			b.UpdateMessageProgress(types.PROCESS, Message.MessageId, filteredConsumer.ConsumerId)
+			fmt.Println(b.Messages)
 		}
 	}
 }

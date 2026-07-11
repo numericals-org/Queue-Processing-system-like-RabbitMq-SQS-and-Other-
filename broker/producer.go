@@ -17,8 +17,10 @@ func (b *Broker) Receiver(Conn net.Conn) {
 		if err != nil {
 			log.Println("Can't read Message from Connection", err)
 			b.Mu.Lock()
-			b.UpdateConsumerStatus(types.DOWN, Conn)
+			consumerId := b.UpdateConsumerStatus(types.DOWN, Conn)
+			b.RetrieveMessage(*consumerId)
 			b.Mu.Unlock()
+			b.Notify <- true
 			return
 		}
 

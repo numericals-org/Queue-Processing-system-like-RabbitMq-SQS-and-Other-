@@ -1,6 +1,8 @@
 package broker
 
-import types "github.com/numericals/queueSys/types"
+import (
+	types "github.com/numericals/queueSys/types"
+)
 
 func (b *Broker) GetEarliestMessage() *types.Message {
 	for i := range b.Messages {
@@ -12,15 +14,16 @@ func (b *Broker) GetEarliestMessage() *types.Message {
 }
 
 func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, consumerId string) {
-	b.Mu.Lock()
+	// b.Mu.Lock()
 	for i := range b.Messages {
-		message := b.Messages[i]
+		message := &b.Messages[i]
 		if message.MessageId == id {
 			message.Progress = progress
 			message.ConsumerId = consumerId
+			return
 		}
 	}
-	b.Mu.Unlock()
+	// b.Mu.Unlock()
 }
 
 func (b *Broker) RemoveMessage(consumerId string) {
@@ -37,4 +40,16 @@ func (b *Broker) RemoveMessage(consumerId string) {
 	}
 
 	b.Messages = append(b.Messages[:index], b.Messages[index+1:]...)
+}
+
+func (b *Broker) RetrieveMessage(consumerId string) {
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.ConsumerId == consumerId && message.Progress == types.PROCESS {
+			message.Progress = types.WAITING
+			message.ConsumerId = ""
+
+			return
+		}
+	}
 }
