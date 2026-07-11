@@ -17,7 +17,7 @@ type Role struct {
 func main() {
 	conn, err := net.Dial("tcp", "localhost:6464")
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Panic(err.Error())
 	}
 
 	role := &types.Message{

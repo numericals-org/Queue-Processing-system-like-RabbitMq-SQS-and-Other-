@@ -5,28 +5,32 @@ import (
 	"log"
 	"net"
 
-	Services "github.com/numericals/queueSys/services"
+	Broker "github.com/numericals/queueSys/broker"
 )
 
 func main() {
+
 	ln, err := net.Listen("tcp", ":6464")
+	Broker := Broker.Broker{
+		Notify: make(chan bool),
+	}
 
 	if err != nil {
 		fmt.Println("TCP connection issue", err)
 	}
 
-	go Services.Dispatcher()
+	go Broker.Dispatcher()
 
 	for {
 		conn, err := ln.Accept()
 
 		if err != nil {
-			log.Fatal("Get issue while getting the conn info", err)
+			log.Println("Get issue while getting the conn info", err)
 		}
 
 		fmt.Println("our server getting connection")
 
-		go Services.Receiver(conn)
+		go Broker.Receiver(conn)
 	}
 
 }

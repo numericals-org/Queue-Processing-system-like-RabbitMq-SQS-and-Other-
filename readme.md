@@ -83,7 +83,7 @@ root
 |_ main.go (entry point)
 ```
 
-### DAY 3 - Finish Broker Version 0.1
+### DAY 3 - Introducing Broker as the Single Source of Truth
 we changes global generic function to multiple functions which have single purpose to do like (UpdateConsumerStatus,UpdateMessageProgress). add round robin algorithm for send 1 message at a time to 1 consumer then pick different one and finish life cycle of message
 
 #### add new value in message type
@@ -121,8 +121,8 @@ n := len(*consumers)
 
 day end with data races issue
 
-### DAY 4 - Fixing Data Races issue
-In the start i just Mutex randomly any where after testing code i git some issue so i add on place where its actually needed
+### DAY 4 - Eliminating Data Races and Introducing Thread-Safe Broker State
+In the start i just Mutex randomly any where after testing code i got some issue so i add on place where its actually needed
 
 so now some file look like this
 ```
@@ -213,3 +213,76 @@ func Receiver(Conn net.Conn) {
 ```
 
 round robin algorithm issue is not just a data race issue it's also a understanding issue which is related to understand when we need to find a new consumer. also when an acknowledgement comes, new message arrive and new consumer joins the connection or when <b> we have to dispatch something.</b>
+
+### DAY 5 - Continue with refactor
+make one single struct who own every thing producers, consumers, message, channels, mutex and methods every possible aspect which is present in our QUEUE SYSTEM
+
+after all refactor current Folder Structure is :-
+```
+root
+|
+|___ broker
+|    |_ broker.go (main broker struct file)
+|    |_ brokerMethods.go (file where all broker methods exists)
+|
+|___ cmd
+|    |_ client
+|	 |	|_ consumer.go (dummy consumer create script)
+|	 |
+|	 |_ server
+|	 	|_ main.go (dummy producer create script)
+|
+|___ types
+|	 |_ globalType.go (file where all types exists)
+|
+|_ go.mod
+|_ go.sum
+|_ main.go
+|_ readme.go
+```
+
+final folder structure in the end of day 5 is :-
+```
+root
+|
+|___ broker
+|    |_ broker.go 
+|    |_ dispatcher.go
+|    |_ consumer.go
+|    |_ producer.go
+|    |_ queue.go
+|
+|___ cmd
+|    |_ client
+|	 |	|_ consumer.go (dummy consumer create script)
+|	 |
+|	 |_ server
+|	 	|_ main.go (dummy producer create script)
+|
+|___ types
+|	 |_ globalType.go (file where all types exists)
+|
+|_ go.mod
+|_ go.sum
+|_ main.go
+|_ readme.go
+```
+
+### DAY 6 - Introducing consumer down & retry mechanism
+in this version our broker we add two important feature which help to make message flow more safe and more reliable in real use case
+
+#### Consumer DOWN detection
+in current state of broken when consumer network lost is lost so whole broker is go down which cause us message lost issue
+so what the plan? the plan is we add one more status for consumer which help to understand consumer is down and after short time we can remove that for our consumer queue and if consumer is up again so we update the status so we get the consumer is ready to start again 
+
+we implement that when the broker detects a read error on a consumer connection so update status like this
+```
+if err != nil {
+			log.Println("Can't read Message from Connection", err)
+			b.Mu.Lock()
+			b.UpdateConsumerStatus(types.DOWN, Conn)
+			b.Mu.Unlock()
+			return
+		}
+```
+and we also update UpdateConsumerStatus function because we implement two for loops which unnecessary at the time of acknowledgement comes to producer
