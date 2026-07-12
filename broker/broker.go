@@ -7,9 +7,11 @@ import (
 )
 
 type Broker struct {
-	Producers []types.Producer
-	Consumers []types.Consumer
-	Messages  []types.Message
-	Notify    chan bool
-	Mu        sync.RWMutex
+	Producers          []types.Producer
+	Consumers          []types.Consumer
+	Messages           []types.Message
+	Notify             chan bool
+	Mu                 sync.RWMutex
+	DeadLetterQueue    []types.Message
+	MaxDeliveryAttempt int
 }

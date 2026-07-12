@@ -18,6 +18,10 @@ func (b *Broker) Receiver(Conn net.Conn) {
 			log.Println("Can't read Message from Connection", err)
 			b.Mu.Lock()
 			consumerId := b.UpdateConsumerStatus(types.DOWN, Conn)
+			if consumerId == nil {
+				b.Mu.Unlock()
+				return
+			}
 			b.RetrieveMessage(*consumerId)
 			b.Mu.Unlock()
 			b.Notify <- true
@@ -51,6 +55,16 @@ func (b *Broker) Receiver(Conn net.Conn) {
 		case types.QUEUE:
 			b.Mu.Lock()
 			b.Messages = append(b.Messages, MSG)
+			b.Mu.Unlock()
+			b.Notify <- true
+		case types.DISAVOW:
+			b.Mu.Lock()
+			consumerId := b.UpdateConsumerStatus(types.IDLE, Conn)
+			if consumerId == nil {
+				b.Mu.Unlock()
+				return
+			}
+			b.RetrieveMessage(*consumerId)
 			b.Mu.Unlock()
 			b.Notify <- true
 		case types.ACKNOWLEDGE:

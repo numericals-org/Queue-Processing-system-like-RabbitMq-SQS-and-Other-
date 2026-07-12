@@ -12,7 +12,8 @@ func main() {
 
 	ln, err := net.Listen("tcp", ":6464")
 	Broker := Broker.Broker{
-		Notify: make(chan bool),
+		Notify:             make(chan bool),
+		MaxDeliveryAttempt: 3,
 	}
 
 	if err != nil {

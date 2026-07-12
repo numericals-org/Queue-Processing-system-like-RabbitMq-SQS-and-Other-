@@ -36,6 +36,7 @@ const (
 	REGISTER_P
 	REGISTER_C
 	ACKNOWLEDGE
+	DISAVOW
 	C_STATUS
 )
 
@@ -48,9 +49,10 @@ const (
 )
 
 type Message struct {
-	MessageId  string
-	Content    []byte
-	Mtype      Mtype
-	Progress   MProgress
-	ConsumerId string
+	MessageId        string
+	Content          []byte
+	Mtype            Mtype
+	Progress         MProgress
+	ConsumerId       string
+	DeliveryAttempts int
 }

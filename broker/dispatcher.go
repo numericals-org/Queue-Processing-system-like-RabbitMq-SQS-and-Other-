@@ -15,7 +15,7 @@ func (b *Broker) Dispatcher() {
 		Message := b.GetEarliestMessage()
 		b.Mu.RUnlock()
 
-		if available && Message != nil {
+		if available && Message != nil && Message.DeliveryAttempts <= b.MaxDeliveryAttempt {
 			filteredConsumer, foundConsumer := b.FindConsumer()
 			if !foundConsumer {
 				log.Println("Dispatcher: No idle consumers available right now.")
@@ -34,6 +34,9 @@ func (b *Broker) Dispatcher() {
 			b.UpdateConsumerStatus(types.BUSY, filteredConsumer.Conn)
 			b.UpdateMessageProgress(types.PROCESS, Message.MessageId, filteredConsumer.ConsumerId)
 			fmt.Println(b.Messages)
+		} else if Message != nil {
+			b.DeadLetterQueue = append(b.DeadLetterQueue, *Message)
+			b.RemoveMessageById(Message.MessageId)
 		}
 	}
 }

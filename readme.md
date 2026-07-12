@@ -313,3 +313,82 @@ if err != nil {
 			return
 		}
 ```
+
+### DAY 7 - Implement NACK and the retry lifecycle.
+today we implement NACK and retry lifecycle where we check is consumer process is failed or some other is occurred in consumer so consumer send DISAVOW(NACK) which work as no acknowledgement for broker and if no acknowledgement so we add retry lifecycle for process that message but no as many time as possible there is a limit. right now the limit is globally static for ever message which is 3 so if consumer failed to send acknowledgement for message 3 times we send message in a different queue.
+
+now one more type add in M.type
+```
+type Mtype int
+
+const (
+	QUEUE Mtype = iota
+	REGISTER_P
+	REGISTER_C
+	ACKNOWLEDGE
+	DISAVOW
+	C_STATUS
+)
+```
+now message look like this
+```
+type Message struct {
+	MessageId  string
+	Content    []byte
+	DeliveryAttempts int
+	Mtype      Mtype
+	Progress   MProgress
+	ConsumerId string
+}
+```
+
+for remove message from queue after all deliveryAttempt is done we add a new function which is look like this:- 
+```
+func (b *Broker) RemoveMessageById(messageId string) {
+	var index int
+
+	for i := range b.Messages {
+		if b.Messages[i].MessageId == messageId {
+			index = i
+		}
+	}
+
+	if len(b.Messages) <= 0 {
+		return
+	}
+
+	b.Messages = append(b.Messages[:index], b.Messages[index+1:]...)
+}
+```
+in this function we need to pass message id to remove it from queue. and DeliveryAttempts increase when dispatcher dispatch message for process so no matter what is the reason for message is not delivered its increase the count and max 4 time we try to send them.
+
+and we add a new protocol in receiver which take care of DISAVOW
+```
+case types.DISAVOW:
+			b.Mu.Lock()
+			consumerId := b.UpdateConsumerStatus(types.IDLE, Conn)
+			if consumerId == nil {
+				b.Mu.Unlock()
+				return
+			}
+			b.RetrieveMessage(*consumerId)
+			b.Mu.Unlock()
+			b.Notify <- true
+```
+we also update UpdateMessageProgress when this function runs now the the delivery attempt gonna increase:-
+```
+func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, consumerId string) {
+	// b.Mu.Lock()
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.MessageId == id {
+			message.Progress = progress
+			message.ConsumerId = consumerId
+			message.DeliveryAttempts++
+			return
+		}
+	}
+	// b.Mu.Unlock()
+}
+``` 
+who owns the retry magical number is broker so we a one more field in Broker which is MaxDeliveryAttempt and this use every where it needs
