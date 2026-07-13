@@ -392,3 +392,214 @@ func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, cons
 }
 ``` 
 who owns the retry magical number is broker so we a one more field in Broker which is MaxDeliveryAttempt and this use every where it needs
+
+### DAY 8 - Visibility Timeout & Retry Delay
+we have recover message when consumer disconnect. we have retry message when consumer send NACK for message, but what when consumer never disconnect, send NACK or ACK. our broker wait for confirmation for forever which is wrong so now we add visibility timeout feature. so our broker wait for a particular time if we don't get any response in return so we retrieve the message and notify the broker. so dispatcher can dispatch the message again.
+
+current updated Broker
+```
+type Broker struct {
+	Producers          []types.Producer
+	Consumers          []types.Consumer
+	Messages           []types.Message
+	Notify             chan bool
+	Mu                 sync.RWMutex
+	DeadLetterQueue    []types.Message
+	MaxDeliveryAttempt int
+	VisibilityTimeout  int
+}
+```
+
+we add one more key in messages 
+```
+type Message struct {
+	MessageId           string
+	Content             []byte
+	Mtype               Mtype
+	Progress            MProgress
+	ConsumerId          string
+	DeliveryAttempts    int
+	ProcessingStartedAt time.Time
+}
+```
+
+we add new service which is VisibilityWatcher. this service is responsible for check every single message in queue which is in process state and timeout is not expire if timeout is expire so retrieve the message and notify the dispatcher.
+
+```
+func (b *Broker) VisibilityWatcher() {
+	for {
+		time.Sleep(1 * time.Second)
+		b.Mu.Lock()
+
+		for i := range b.Messages {
+			msg := &b.Messages[i]
+			if msg.Progress != types.PROCESS {
+				continue
+			}
+
+			timeout := time.Since(msg.ProcessingStartedAt)
+
+			if timeout >= time.Duration(b.VisibilityTimeout) {
+				b.RetrieveMessage(msg.ConsumerId)
+				b.Notify <- true
+			}
+		}
+
+		b.Mu.Unlock()
+	}
+}
+```
+
+current folder structure look like this:- 
+```
+root
+|
+|___ broker
+|    |_ broker.go 
+|    |_ dispatcher.go
+|    |_ consumer.go
+|    |_ producer.go
+|    |_ queue.go
+|    |_ VisibilityWatcher.go
+|
+|___ cmd
+|    |_ client
+|	 |	|_ consumer.go (dummy consumer create script)
+|	 |
+|	 |_ server
+|	 	|_ main.go (dummy producer create script)
+|
+|___ types
+|	 |_ globalType.go (file where all types exists)
+|
+|_ go.mod
+|_ go.sum
+|_ main.go
+|_ readme.go
+```
+
+face a data race issue at time UpdateMessageProgress call so we add mu.lock at dispatcher and unload after process done
+
+#### Retry Delay
+now implement retry delay is save our cpu usage from send unnecessary message dispatch. we implement two pattern here
+1. use a global retry delay
+2. consumer send us retry delay
+
+consumer sended retry delay overwrite the global retry delay.
+
+we add new field in message now
+```
+type Message struct {
+	MessageId           string
+	Content             []byte
+	Mtype               Mtype
+	Progress            MProgress
+	ConsumerId          string
+	DeliveryAttempts    int
+	ProcessingStartedAt time.Time
+	LastConsumerId      string
+	RetryAfter          time.Duration
+	RetrieveAt          time.Time
+}
+```
+
+update retrieve message function:-
+```
+func (b *Broker) RetrieveMessage(consumerId string, duration time.Duration) {
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.ConsumerId == consumerId && message.Progress == types.PROCESS {
+			message.Progress = types.WAITING
+			message.LastConsumerId = message.ConsumerId
+			message.ConsumerId = ""
+			message.RetrieveAt = time.Now().Add(duration)
+			return
+		}
+	}
+}
+```
+
+update GetEarliestMessage function also:-
+```
+func (b *Broker) GetEarliestMessage() *types.Message {
+	for i := range b.Messages {
+		msg := &b.Messages[i]
+
+		if msg.Progress != types.WAITING {
+			continue
+		}
+
+		if time.Now().Before(msg.RetrieveAt) {
+			continue
+		}
+
+		return msg
+	}
+	return nil
+}
+```
+
+introducing a new service which RetryWatcher. which check every possible message in queue which is possible to resend
+```
+func (b *Broker) RetryWatcher() {
+	for {
+		time.Sleep(1 * time.Second)
+		retrieved := false
+		b.Mu.Lock()
+
+		for i := range b.Messages {
+			msg := &b.Messages[i]
+			if msg.Progress != types.WAITING {
+				continue
+			}
+
+			if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) {
+				retrieved = true
+			}
+		}
+
+		b.Mu.Unlock()
+		if retrieved == true {
+			b.Notify <- true
+		}
+	}
+}
+```
+
+Broker Current flow
+```
+                     Producer
+                         │
+                         ▼
+                     Receiver
+                         │
+                         ▼
+                    WAITING
+                         │
+             RetrieveAt expired?
+                         │
+                         ▼
+                    Dispatcher
+                         │
+                         ▼
+                     PROCESS
+                    /       \
+                  ACK      DISAVOW
+                   │           │
+                   ▼           ▼
+                DELETE    RetrieveMessage
+                               │
+                               ▼
+                            WAITING
+                               │
+                               ▼
+                         RetryWatcher
+
+Consumer Disconnect
+        │
+        ▼
+VisibilityWatcher
+        │
+        ▼
+RetrieveMessage
+```

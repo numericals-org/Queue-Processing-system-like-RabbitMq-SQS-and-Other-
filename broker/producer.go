@@ -2,6 +2,7 @@ package broker
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 
@@ -22,7 +23,7 @@ func (b *Broker) Receiver(Conn net.Conn) {
 				b.Mu.Unlock()
 				return
 			}
-			b.RetrieveMessage(*consumerId)
+			b.RetrieveMessage(*consumerId, 0)
 			b.Mu.Unlock()
 			b.Notify <- true
 			return
@@ -64,7 +65,12 @@ func (b *Broker) Receiver(Conn net.Conn) {
 				b.Mu.Unlock()
 				return
 			}
-			b.RetrieveMessage(*consumerId)
+			if MSG.RetryAfter != 0 {
+				fmt.Println(MSG, MSG.RetryAfter)
+				b.RetrieveMessage(*consumerId, MSG.RetryAfter)
+			} else {
+				b.RetrieveMessage(*consumerId, b.DefaultRetryDelay)
+			}
 			b.Mu.Unlock()
 			b.Notify <- true
 		case types.ACKNOWLEDGE:

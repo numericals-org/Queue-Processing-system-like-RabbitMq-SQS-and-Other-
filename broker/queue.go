@@ -1,14 +1,24 @@
 package broker
 
 import (
+	"time"
+
 	types "github.com/numericals/queueSys/types"
 )
 
 func (b *Broker) GetEarliestMessage() *types.Message {
 	for i := range b.Messages {
-		if b.Messages[i].Progress == types.WAITING {
-			return &b.Messages[i]
+		msg := &b.Messages[i]
+
+		if msg.Progress != types.WAITING {
+			continue
 		}
+
+		if time.Now().Before(msg.RetrieveAt) {
+			continue
+		}
+
+		return msg
 	}
 	return nil
 }
@@ -21,6 +31,7 @@ func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, cons
 			message.Progress = progress
 			message.ConsumerId = consumerId
 			message.DeliveryAttempts++
+			message.ProcessingStartedAt = time.Now()
 			return
 		}
 	}
@@ -59,12 +70,14 @@ func (b *Broker) RemoveMessageById(messageId string) {
 	b.Messages = append(b.Messages[:index], b.Messages[index+1:]...)
 }
 
-func (b *Broker) RetrieveMessage(consumerId string) {
+func (b *Broker) RetrieveMessage(consumerId string, duration time.Duration) {
 	for i := range b.Messages {
 		message := &b.Messages[i]
 		if message.ConsumerId == consumerId && message.Progress == types.PROCESS {
 			message.Progress = types.WAITING
+			message.LastConsumerId = message.ConsumerId
 			message.ConsumerId = ""
+			message.RetrieveAt = time.Now().Add(duration)
 			return
 		}
 	}

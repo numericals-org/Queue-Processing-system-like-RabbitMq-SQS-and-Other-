@@ -1,6 +1,9 @@
 package types
 
-import "net"
+import (
+	"net"
+	"time"
+)
 
 // Type related to Consumers and Producers
 
@@ -49,10 +52,14 @@ const (
 )
 
 type Message struct {
-	MessageId        string
-	Content          []byte
-	Mtype            Mtype
-	Progress         MProgress
-	ConsumerId       string
-	DeliveryAttempts int
+	MessageId           string
+	Content             []byte
+	Mtype               Mtype
+	Progress            MProgress
+	ConsumerId          string
+	DeliveryAttempts    int
+	ProcessingStartedAt time.Time
+	LastConsumerId      string
+	RetryAfter          time.Duration
+	RetrieveAt          time.Time
 }

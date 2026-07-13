@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/numericals/queueSys/types"
@@ -52,45 +51,44 @@ func main() {
 			fmt.Println("error:", err)
 		}
 
-		role = &types.Message{
-			MessageId:  uuid.New().String(),
-			Content:    []byte("process failed"),
-			Mtype:      types.DISAVOW,
-			RetryAfter: 25 * time.Second,
-		}
+		// role = &types.Message{
+		// 	MessageId: uuid.New().String(),
+		// 	Content:   []byte("process failed"),
+		// 	Mtype:     types.DISAVOW,
+		// }
 
 		fmt.Println(string(printVal.Content))
-		if true {
-			payload, err := json.Marshal(role)
-			if err != nil {
-				log.Fatal(err)
-				return
-			}
+		// if true {
+		// 	payload, err := json.Marshal(role)
+		// 	if err != nil {
+		// 		log.Fatal(err)
+		// 		return
+		// 	}
 
-			_, err = conn.Write(payload)
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-			return
-		}
+		// 	_, err = conn.Write(payload)
+		// 	if err != nil {
+		// 		log.Fatal(err.Error())
+		// 	}
+		// 	return
+		// }
 
-		role = &types.Message{
-			MessageId: uuid.New().String(),
-			Content:   []byte("i am available"),
-			Mtype:     types.ACKNOWLEDGE,
-		}
+		// role = &types.Message{
+		// 	MessageId: uuid.New().String(),
+		// 	Content:   []byte("i am available"),
+		// 	Mtype:     types.ACKNOWLEDGE,
+		// }
 
-		payload, err := json.Marshal(role)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
+		// payload, err := json.Marshal(role)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// 	return
+		// }
 
-		_, err = conn.Write(payload)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
+		// _, err = conn.Write(payload)
+		// if err != nil {
+		// 	log.Fatal(err.Error())
+		// }
 
-		fmt.Println(payload)
+		// fmt.Println(payload)
 	}
 }

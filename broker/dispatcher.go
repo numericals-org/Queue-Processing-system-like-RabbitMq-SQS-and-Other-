@@ -2,7 +2,6 @@ package broker
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 
 	types "github.com/numericals/queueSys/types"
@@ -32,8 +31,9 @@ func (b *Broker) Dispatcher() {
 				continue
 			}
 			b.UpdateConsumerStatus(types.BUSY, filteredConsumer.Conn)
+			b.Mu.Lock()
 			b.UpdateMessageProgress(types.PROCESS, Message.MessageId, filteredConsumer.ConsumerId)
-			fmt.Println(b.Messages)
+			b.Mu.Unlock()
 		} else if Message != nil {
 			b.DeadLetterQueue = append(b.DeadLetterQueue, *Message)
 			b.RemoveMessageById(Message.MessageId)

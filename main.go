@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	Broker "github.com/numericals/queueSys/broker"
 )
@@ -14,6 +15,8 @@ func main() {
 	Broker := Broker.Broker{
 		Notify:             make(chan bool),
 		MaxDeliveryAttempt: 3,
+		VisibilityTimeout:  30,
+		DefaultRetryDelay:  5 * time.Second,
 	}
 
 	if err != nil {
@@ -21,6 +24,7 @@ func main() {
 	}
 
 	go Broker.Dispatcher()
+	go Broker.VisibilityWatcher()
 
 	for {
 		conn, err := ln.Accept()
