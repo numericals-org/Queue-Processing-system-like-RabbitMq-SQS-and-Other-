@@ -57,8 +57,8 @@ func (b *Broker) Receiver(Conn net.Conn) {
 		case types.QUEUE:
 			b.Mu.Lock()
 			err := b.Storage.Append(types.WALEvent{
-				EventType: "Queue",
-				Message:   MSG,
+				EventType: types.TASK_QUEUE,
+				Message:   &MSG,
 				Time:      time.Now(),
 			})
 			if err != nil {

@@ -64,8 +64,19 @@ type Message struct {
 	RetrieveAt          time.Time
 }
 
+type WALEType int
+
+const (
+	TASK_QUEUE WALEType = iota
+	TASK_DISPATCH
+	TASK_ACK
+	TASK_DISAVOW
+)
+
 type WALEvent struct {
-	EventType string
-	Message   Message
-	Time      time.Time
+	EventType  WALEType
+	MessageId  string
+	ConsumerId string
+	Message    *Message
+	Time       time.Time
 }

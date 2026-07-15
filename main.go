@@ -32,6 +32,16 @@ func main() {
 		Storage:            wal,
 	}
 
+	events, err := Broker.Storage.Replay()
+
+	if err != nil {
+		log.Println("issue in reading file", err)
+	}
+
+	for _, event := range events {
+		Broker.Apply(event)
+	}
+
 	go Broker.Dispatcher()
 	go Broker.VisibilityWatcher()
 

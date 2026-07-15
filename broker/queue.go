@@ -28,6 +28,13 @@ func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, cons
 	for i := range b.Messages {
 		message := &b.Messages[i]
 		if message.MessageId == id {
+			b.Storage.Append(types.WALEvent{
+				EventType:  types.TASK_DISPATCH,
+				MessageId:  id,
+				ConsumerId: consumerId,
+				Message:    message,
+				Time:       time.Now(),
+			})
 			message.Progress = progress
 			message.ConsumerId = consumerId
 			message.DeliveryAttempts++
@@ -44,6 +51,13 @@ func (b *Broker) RemoveMessage(consumerId string) {
 	for i := range b.Messages {
 		if b.Messages[i].ConsumerId == consumerId && b.Messages[i].Progress == types.PROCESS {
 			index = i
+			b.Storage.Append(types.WALEvent{
+				EventType: types.TASK_ACK,
+				MessageId: b.Messages[i].MessageId,
+				Message:   &b.Messages[i],
+				Time:      time.Now(),
+			})
+			break
 		}
 	}
 
@@ -74,10 +88,18 @@ func (b *Broker) RetrieveMessage(consumerId string, duration time.Duration) {
 	for i := range b.Messages {
 		message := &b.Messages[i]
 		if message.ConsumerId == consumerId && message.Progress == types.PROCESS {
+			b.Storage.Append(types.WALEvent{
+				EventType:  types.TASK_DISAVOW,
+				ConsumerId: consumerId,
+				MessageId:  message.MessageId,
+				Message:    message,
+				Time:       time.Now(),
+			})
 			message.Progress = types.WAITING
 			message.LastConsumerId = message.ConsumerId
 			message.ConsumerId = ""
 			message.RetrieveAt = time.Now().Add(duration)
+
 			return
 		}
 	}
