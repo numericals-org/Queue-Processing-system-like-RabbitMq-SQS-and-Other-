@@ -603,3 +603,36 @@ VisibilityWatcher
         ▼
 RetrieveMessage
 ```
+
+### DAY 9 - A broker should not lose messages when it crashes.
+we start design a database for our broker where we recover data when broker is crashed.
+current folder structure look like :-
+```
+root
+|
+|___ broker
+|    |_ broker.go 
+|    |_ dispatcher.go
+|    |_ consumer.go
+|    |_ producer.go
+|    |_ queue.go
+|    |_ VisibilityWatcher.go
+|
+|___ cmd
+|    |_ client
+|	 |	|_ consumer.go (dummy consumer create script)
+|	 |
+|	 |_ server
+|	 	|_ main.go (dummy producer create script)
+|
+|___ storage
+|    |_ wal.log (for store logs)
+|
+|___ types
+|	 |_ globalType.go (file where all types exists)
+|
+|_ go.mod
+|_ go.sum
+|_ main.go
+|_ readme.md
+```

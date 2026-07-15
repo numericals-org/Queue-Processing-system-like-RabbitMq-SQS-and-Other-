@@ -63,3 +63,9 @@ type Message struct {
 	RetryAfter          time.Duration
 	RetrieveAt          time.Time
 }
+
+type WALEvent struct {
+	EventType string
+	Message   Message
+	Time      time.Time
+}

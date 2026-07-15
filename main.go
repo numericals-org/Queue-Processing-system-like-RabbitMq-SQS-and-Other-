@@ -7,20 +7,29 @@ import (
 	"time"
 
 	Broker "github.com/numericals/queueSys/broker"
+	"github.com/numericals/queueSys/storage"
 )
 
 func main() {
 
 	ln, err := net.Listen("tcp", ":6464")
+
+	if err != nil {
+		fmt.Println("TCP connection issue", err)
+	}
+
+	wal, err := storage.NewWal("data/wal.log")
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	Broker := Broker.Broker{
 		Notify:             make(chan bool),
 		MaxDeliveryAttempt: 3,
 		VisibilityTimeout:  30,
 		DefaultRetryDelay:  5 * time.Second,
-	}
-
-	if err != nil {
-		fmt.Println("TCP connection issue", err)
+		Storage:            wal,
 	}
 
 	go Broker.Dispatcher()

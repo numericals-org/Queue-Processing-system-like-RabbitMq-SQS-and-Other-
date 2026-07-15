@@ -1,0 +1,1 @@
+{"EventType":"Queue","Message":{"MessageId":"eac31c78-5a5a-44cc-ad32-b05868d35944","Content":"SGVsbG8NCg==","Mtype":0,"Progress":0,"ConsumerId":"","DeliveryAttempts":0,"ProcessingStartedAt":"0001-01-01T00:00:00Z","LastConsumerId":"","RetryAfter":0,"RetrieveAt":"0001-01-01T00:00:00Z"},"Time":"2026-07-15T18:32:40.4314627+05:30"}

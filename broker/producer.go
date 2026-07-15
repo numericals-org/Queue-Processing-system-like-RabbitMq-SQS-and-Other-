@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/numericals/queueSys/types"
@@ -55,6 +56,16 @@ func (b *Broker) Receiver(Conn net.Conn) {
 			b.Notify <- true
 		case types.QUEUE:
 			b.Mu.Lock()
+			err := b.Storage.Append(types.WALEvent{
+				EventType: "Queue",
+				Message:   MSG,
+				Time:      time.Now(),
+			})
+			if err != nil {
+				b.Mu.Unlock()
+				log.Println("failed to persist message:", err)
+				return
+			}
 			b.Messages = append(b.Messages, MSG)
 			b.Mu.Unlock()
 			b.Notify <- true

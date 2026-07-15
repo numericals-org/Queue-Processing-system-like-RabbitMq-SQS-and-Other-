@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/numericals/queueSys/storage"
 	types "github.com/numericals/queueSys/types"
 )
 
@@ -17,4 +18,5 @@ type Broker struct {
 	MaxDeliveryAttempt int
 	VisibilityTimeout  int
 	DefaultRetryDelay  time.Duration
+	Storage            storage.Storage
 }
