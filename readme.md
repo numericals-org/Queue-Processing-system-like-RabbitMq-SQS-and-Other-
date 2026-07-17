@@ -612,11 +612,15 @@ root
 |
 |___ broker
 |    |_ broker.go 
+|    |_ apply.go 
 |    |_ dispatcher.go
 |    |_ consumer.go
 |    |_ producer.go
 |    |_ queue.go
 |    |_ VisibilityWatcher.go
+|    |_ RetryWatcher.go
+|    |_ message.go
+|    |_ commit.go
 |
 |___ cmd
 |    |_ client
@@ -626,6 +630,10 @@ root
 |	 	|_ main.go (dummy producer create script)
 |
 |___ storage
+|    |_ storage.go
+|    |_ wal.go
+|
+|___ data
 |    |_ wal.log (for store logs)
 |
 |___ types
@@ -635,4 +643,279 @@ root
 |_ go.sum
 |_ main.go
 |_ readme.md
+```
+
+changes the protocol architecture now we Packet type which tell us the Packet type and content look like this:-
+```
+type Packet struct {
+	Type       Mtype         `json:"type"`
+	MessageId  string        `json:"messageId,omitempty"`
+	Content    []byte        `json:"content,omitempty"`
+	RetryAfter time.Duration `json:"retryAfter,omitempty"`
+}
+```
+
+we also update the message type which use at place of Packets. now message :-
+```
+type Message struct {
+	MessageId           string
+	Content             []byte
+	Progress            MProgress
+	ConsumerId          string
+	DeliveryAttempts    int
+	ProcessingStartedAt time.Time
+	LastConsumerId      string
+	RetryAfter          time.Duration
+	RetrieveAt          time.Time
+}
+```
+
+we create a WAL (write ahead logs) system in it which we use for reply the queue when broker restart. there is 3 file belong to WAL.
+1. storage.go :-
+```
+package storage
+
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/numericals/queueSys/types"
+)
+
+type Storage interface {
+	Append(event types.WALEvent) error
+	Replay() ([]types.WALEvent, error)
+	Close() error
+}
+
+func (w *WAL) Append(event types.WALEvent) error {
+
+	payload, err := json.Marshal(event)
+
+	if err != nil {
+		return fmt.Errorf("failed to marshal WAL event: %w", err)
+	}
+
+	_, err = w.file.Write(append(payload, '\n'))
+
+	if err != nil {
+		return fmt.Errorf("failed writing to cache: %w", err)
+	}
+
+	if err := w.file.Sync(); err != nil {
+		return fmt.Errorf("failed to sync wal file: %w", err)
+	}
+
+	return nil
+}
+
+func (w *WAL) Replay() ([]types.WALEvent, error) {
+	file, err := os.Open(w.file.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to open WAL for replay: %w", err)
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	var estimatedCount int
+
+	if err == nil && stat.Size() > 0 {
+		estimatedCount = int(stat.Size() / 150)
+	}
+
+	events := make([]types.WALEvent, 0, estimatedCount)
+
+	scanner := bufio.NewScanner(file)
+
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 512*1024)
+
+	for scanner.Scan() {
+		var event types.WALEvent
+
+		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal replay event: %w", err)
+		}
+
+		events = append(events, event)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading WAL stream: %w", err)
+	}
+
+	return events, nil
+}
+
+func (w *WAL) Close() error {
+	return w.file.Close()
+}
+
+```
+
+in this file we create a interface which use with wal struct. all method belongs tp wal is present in this file like (append, reply, close).
+
+2. wal.go :-
+```
+package storage
+
+import (
+	"fmt"
+	"os"
+)
+
+type WAL struct {
+	file *os.File
+}
+
+func NewWal(path string) (*WAL, error) {
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0640)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to open wal file: %w", err)
+	}
+
+	wal := &WAL{
+		file: file,
+	}
+
+	return wal, nil
+}
+
+```
+
+in this file we create our main struct for wal and newWal method for create a new log file.
+
+3. wal.log :- in this file all event and msg which receive, dispatch, retrieve, delete, or send Dead Queue record here.
+
+we also create some broker methods a well like (createMessage, commit).
+commit.go :-
+```
+package broker
+
+import (
+	"log"
+	"time"
+
+	"github.com/numericals/queueSys/types"
+)
+
+func (b *Broker) Commit(task types.WALEType, messageId string, consumerId string, msg *types.Message) {
+	err := b.Storage.Append(types.WALEvent{
+		EventType:  task,
+		MessageId:  messageId,
+		ConsumerId: consumerId,
+		Time:       time.Now(),
+		Message:    msg,
+	})
+
+	if err != nil {
+		log.Println("commit unsuccessfully", err)
+	}
+}
+
+```
+we create this file for manage our single source of task in every function this function only works is append code in WAL
+
+message.go :- 
+```
+package broker
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/numericals/queueSys/types"
+)
+
+func (b *Broker) CreateMessage(content []byte, RetryAfter time.Duration) *types.Message {
+	return &types.Message{
+		MessageId: uuid.New().String(),
+		Content:   content,
+		Progress:  types.WAITING,
+	}
+}
+
+```
+we manage all message which create to send. create at one place
+
+we use them at dispatcher, producers, retryWatcher, and VisibilityWatcher. some implementation:-
+```
+case types.QUEUE:
+			b.Mu.Lock()
+			Message := b.CreateMessage(MSG.Content, MSG.RetryAfter)
+			b.Commit(types.TASK_QUEUE, "", "", Message)
+			b.Messages = append(b.Messages, *Message)
+			b.Mu.Unlock()
+			b.Notify <- true
+```
+
+```
+func (b *Broker) RetryWatcher() {
+	for {
+		time.Sleep(1 * time.Second)
+		retrieved := false
+		b.Mu.Lock()
+
+		for i := range b.Messages {
+			msg := &b.Messages[i]
+			if msg.Progress != types.WAITING {
+				continue
+			}
+
+			if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) {
+				b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil)
+				retrieved = true
+			}
+		}
+
+		b.Mu.Unlock()
+		if retrieved == true {
+			b.Notify <- true
+		}
+	}
+}
+```
+
+```
+case types.ACKNOWLEDGE:
+			b.Mu.Lock()
+			consumerId := b.UpdateConsumerStatus(types.IDLE, Conn)
+			if consumerId == nil {
+				log.Println("can't get the consumerId", err)
+			}
+			b.Commit(types.TASK_ACK, MSG.MessageId, *consumerId, nil)
+			b.RemoveMessage(MSG.MessageId)
+			b.Mu.Unlock()
+			b.Notify <- true
+```
+
+we also add some method for Requeue the Message without append logs in wal.log file like RequeueMessage, MarkMessageProcessing
+```
+func (b *Broker) RequeueMessage(messageId string, consumerId string) {
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.MessageId == messageId {
+			message.Progress = types.WAITING
+			message.LastConsumerId = consumerId
+			message.ConsumerId = ""
+		}
+	}
+}
+```
+
+```
+func (b *Broker) MarkMessageProcessing(messageId string, consumerId string, ProcessingStartedAt time.Time) {
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.MessageId == messageId {
+			message.Progress = types.PROCESS
+			message.ConsumerId = consumerId
+			message.ProcessingStartedAt = ProcessingStartedAt
+		}
+	}
+}
 ```

@@ -28,13 +28,6 @@ func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, cons
 	for i := range b.Messages {
 		message := &b.Messages[i]
 		if message.MessageId == id {
-			b.Storage.Append(types.WALEvent{
-				EventType:  types.TASK_DISPATCH,
-				MessageId:  id,
-				ConsumerId: consumerId,
-				Message:    message,
-				Time:       time.Now(),
-			})
 			message.Progress = progress
 			message.ConsumerId = consumerId
 			message.DeliveryAttempts++
@@ -45,18 +38,12 @@ func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, cons
 	// b.Mu.Unlock()
 }
 
-func (b *Broker) RemoveMessage(consumerId string) {
+func (b *Broker) RemoveMessage(messageId string) {
 	var index int
 
 	for i := range b.Messages {
-		if b.Messages[i].ConsumerId == consumerId && b.Messages[i].Progress == types.PROCESS {
+		if b.Messages[i].MessageId == messageId {
 			index = i
-			b.Storage.Append(types.WALEvent{
-				EventType: types.TASK_ACK,
-				MessageId: b.Messages[i].MessageId,
-				Message:   &b.Messages[i],
-				Time:      time.Now(),
-			})
 			break
 		}
 	}
@@ -68,39 +55,65 @@ func (b *Broker) RemoveMessage(consumerId string) {
 	b.Messages = append(b.Messages[:index], b.Messages[index+1:]...)
 }
 
-func (b *Broker) RemoveMessageById(messageId string) {
-	var index int
-
-	for i := range b.Messages {
-		if b.Messages[i].MessageId == messageId {
-			index = i
-		}
-	}
-
-	if len(b.Messages) <= 0 {
-		return
-	}
-
-	b.Messages = append(b.Messages[:index], b.Messages[index+1:]...)
-}
-
-func (b *Broker) RetrieveMessage(consumerId string, duration time.Duration) {
+func (b *Broker) RetrieveMessages(consumerId string, duration time.Duration, task types.WALEType) {
 	for i := range b.Messages {
 		message := &b.Messages[i]
 		if message.ConsumerId == consumerId && message.Progress == types.PROCESS {
+			message.Progress = types.WAITING
+			message.LastConsumerId = message.ConsumerId
+			message.ConsumerId = ""
+			message.RetrieveAt = time.Now().Add(duration)
+		}
+	}
+}
+
+func (b *Broker) RetrieveMessage(MessageId string, consumerId string, duration time.Duration, task types.WALEType) {
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.MessageId == MessageId {
 			b.Storage.Append(types.WALEvent{
-				EventType:  types.TASK_DISAVOW,
+				EventType:  task,
 				ConsumerId: consumerId,
 				MessageId:  message.MessageId,
-				Message:    message,
 				Time:       time.Now(),
 			})
 			message.Progress = types.WAITING
 			message.LastConsumerId = message.ConsumerId
 			message.ConsumerId = ""
 			message.RetrieveAt = time.Now().Add(duration)
+		}
+	}
+}
 
-			return
+func (b *Broker) FindMessageById(messageId string) *types.Message {
+
+	for i := range b.Messages {
+		if b.Messages[i].MessageId == messageId {
+			return &b.Messages[i]
+		}
+	}
+
+	return nil
+}
+
+func (b *Broker) RequeueMessage(messageId string, consumerId string) {
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.MessageId == messageId {
+			message.Progress = types.WAITING
+			message.LastConsumerId = consumerId
+			message.ConsumerId = ""
+		}
+	}
+}
+
+func (b *Broker) MarkMessageProcessing(messageId string, consumerId string, ProcessingStartedAt time.Time) {
+	for i := range b.Messages {
+		message := &b.Messages[i]
+		if message.MessageId == messageId {
+			message.Progress = types.PROCESS
+			message.ConsumerId = consumerId
+			message.ProcessingStartedAt = ProcessingStartedAt
 		}
 	}
 }

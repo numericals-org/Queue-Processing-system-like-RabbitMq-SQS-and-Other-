@@ -21,7 +21,8 @@ func (b *Broker) VisibilityWatcher() {
 			timeout := time.Since(msg.ProcessingStartedAt)
 
 			if timeout >= time.Duration(b.VisibilityTimeout)*time.Second {
-				b.RetrieveMessage(msg.ConsumerId, 0)
+				b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil)
+				b.RetrieveMessage(msg.MessageId, msg.ConsumerId, 0, types.TASK_TIMEOUT)
 				retrieved = true
 			}
 		}

@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 
-	"github.com/google/uuid"
 	types "github.com/numericals/queueSys/types"
 )
 
@@ -18,10 +17,9 @@ func main() {
 		fmt.Println(err.Error())
 	}
 
-	role := &types.Message{
-		MessageId: uuid.New().String(),
-		Content:   []byte("Register as producer"),
-		Mtype:     types.REGISTER_P,
+	role := &types.Packet{
+		Content: []byte("Register as producer"),
+		Type:    types.REGISTER_P,
 	}
 	payload, err := json.Marshal(role)
 	if err != nil {
@@ -45,10 +43,9 @@ func main() {
 		text, _ := reader.ReadString('\n')
 		Text = text
 
-		json_msg := &types.Message{
-			MessageId: uuid.New().String(),
-			Content:   []byte(Text),
-			Mtype:     types.QUEUE,
+		json_msg := &types.Packet{
+			Content: []byte(Text),
+			Type:    types.QUEUE,
 		}
 
 		payload, err := json.Marshal(json_msg)

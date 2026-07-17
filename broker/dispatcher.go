@@ -32,11 +32,13 @@ func (b *Broker) Dispatcher() {
 			}
 			b.UpdateConsumerStatus(types.BUSY, filteredConsumer.Conn)
 			b.Mu.Lock()
+			b.Commit(types.TASK_DISPATCH, Message.MessageId, filteredConsumer.ConsumerId, nil)
 			b.UpdateMessageProgress(types.PROCESS, Message.MessageId, filteredConsumer.ConsumerId)
 			b.Mu.Unlock()
 		} else if Message != nil {
 			b.DeadLetterQueue = append(b.DeadLetterQueue, *Message)
-			b.RemoveMessageById(Message.MessageId)
+			b.Commit(types.TASK_DEAD_QUEUE, Message.MessageId, Message.ConsumerId, nil)
+			b.RemoveMessage(Message.MessageId)
 		}
 	}
 }

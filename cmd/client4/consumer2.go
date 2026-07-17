@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/google/uuid"
 	"github.com/numericals/queueSys/types"
 )
 
@@ -20,10 +19,9 @@ func main() {
 		log.Panic(err.Error())
 	}
 
-	role := &types.Message{
-		MessageId: uuid.New().String(),
-		Content:   []byte("Register as consumer"),
-		Mtype:     types.REGISTER_C,
+	role := &types.Packet{
+		Content: []byte("Register as consumer"),
+		Type:    types.REGISTER_C,
 	}
 	payload, err := json.Marshal(role)
 	if err != nil {

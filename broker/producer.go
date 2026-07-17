@@ -2,10 +2,8 @@ package broker
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/numericals/queueSys/types"
@@ -24,19 +22,19 @@ func (b *Broker) Receiver(Conn net.Conn) {
 				b.Mu.Unlock()
 				return
 			}
-			b.RetrieveMessage(*consumerId, 0)
+			b.RetrieveMessages(*consumerId, 0, types.TASK_CONSUMER_DOWN)
 			b.Mu.Unlock()
 			b.Notify <- true
 			return
 		}
 
-		var MSG types.Message
+		var MSG types.Packet
 		err = json.Unmarshal(buffer[:length], &MSG)
 		if err != nil {
 			log.Println("unable to Unmarshal the json", err)
 		}
 
-		switch MSG.Mtype {
+		switch MSG.Type {
 		case types.REGISTER_P:
 			b.Mu.Lock()
 			b.Producers = append(b.Producers, types.Producer{
@@ -56,17 +54,9 @@ func (b *Broker) Receiver(Conn net.Conn) {
 			b.Notify <- true
 		case types.QUEUE:
 			b.Mu.Lock()
-			err := b.Storage.Append(types.WALEvent{
-				EventType: types.TASK_QUEUE,
-				Message:   &MSG,
-				Time:      time.Now(),
-			})
-			if err != nil {
-				b.Mu.Unlock()
-				log.Println("failed to persist message:", err)
-				return
-			}
-			b.Messages = append(b.Messages, MSG)
+			Message := b.CreateMessage(MSG.Content, MSG.RetryAfter)
+			b.Commit(types.TASK_QUEUE, "", "", Message)
+			b.Messages = append(b.Messages, *Message)
 			b.Mu.Unlock()
 			b.Notify <- true
 		case types.DISAVOW:
@@ -77,10 +67,11 @@ func (b *Broker) Receiver(Conn net.Conn) {
 				return
 			}
 			if MSG.RetryAfter != 0 {
-				fmt.Println(MSG, MSG.RetryAfter)
-				b.RetrieveMessage(*consumerId, MSG.RetryAfter)
+				b.Commit(types.TASK_DISAVOW, MSG.MessageId, *consumerId, nil)
+				b.RetrieveMessage(MSG.MessageId, *consumerId, MSG.RetryAfter, types.TASK_DISAVOW)
 			} else {
-				b.RetrieveMessage(*consumerId, b.DefaultRetryDelay)
+				b.Commit(types.TASK_DISAVOW, MSG.MessageId, *consumerId, nil)
+				b.RetrieveMessage(MSG.MessageId, *consumerId, b.DefaultRetryDelay, types.TASK_DISAVOW)
 			}
 			b.Mu.Unlock()
 			b.Notify <- true
@@ -90,7 +81,8 @@ func (b *Broker) Receiver(Conn net.Conn) {
 			if consumerId == nil {
 				log.Println("can't get the consumerId", err)
 			}
-			b.RemoveMessage(*consumerId)
+			b.Commit(types.TASK_ACK, MSG.MessageId, *consumerId, nil)
+			b.RemoveMessage(MSG.MessageId)
 			b.Mu.Unlock()
 			b.Notify <- true
 		}

@@ -7,7 +7,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/numericals/queueSys/types"
 )
 
@@ -21,10 +20,9 @@ func main() {
 		log.Panic(err.Error())
 	}
 
-	role := &types.Message{
-		MessageId: uuid.New().String(),
-		Content:   []byte("Register as consumer"),
-		Mtype:     types.REGISTER_C,
+	role := &types.Packet{
+		Content: []byte("Register as consumer"),
+		Type:    types.REGISTER_C,
 	}
 	payload, err := json.Marshal(role)
 	if err != nil {
@@ -52,10 +50,10 @@ func main() {
 			fmt.Println("error:", err)
 		}
 
-		role = &types.Message{
-			MessageId:  uuid.New().String(),
+		role = &types.Packet{
+			MessageId:  printVal.MessageId,
 			Content:    []byte("process failed"),
-			Mtype:      types.DISAVOW,
+			Type:       types.DISAVOW,
 			RetryAfter: 25 * time.Second,
 		}
 
@@ -74,10 +72,10 @@ func main() {
 			return
 		}
 
-		role = &types.Message{
-			MessageId: uuid.New().String(),
+		role = &types.Packet{
+			MessageId: printVal.MessageId,
 			Content:   []byte("i am available"),
-			Mtype:     types.ACKNOWLEDGE,
+			Type:      types.ACKNOWLEDGE,
 		}
 
 		payload, err := json.Marshal(role)

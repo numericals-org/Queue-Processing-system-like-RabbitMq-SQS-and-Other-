@@ -42,8 +42,11 @@ func main() {
 		Broker.Apply(event)
 	}
 
+	Broker.RecoverInFlightMessages()
+
 	go Broker.Dispatcher()
 	go Broker.VisibilityWatcher()
+	go Broker.RetryWatcher()
 
 	for {
 		conn, err := ln.Accept()

@@ -51,10 +51,16 @@ const (
 	DELETE
 )
 
+type Packet struct {
+	Type       Mtype         `json:"type"`
+	MessageId  string        `json:"messageId,omitempty"`
+	Content    []byte        `json:"content,omitempty"`
+	RetryAfter time.Duration `json:"retryAfter,omitempty"`
+}
+
 type Message struct {
 	MessageId           string
 	Content             []byte
-	Mtype               Mtype
 	Progress            MProgress
 	ConsumerId          string
 	DeliveryAttempts    int
@@ -71,6 +77,10 @@ const (
 	TASK_DISPATCH
 	TASK_ACK
 	TASK_DISAVOW
+	TASK_TIMEOUT
+	TASK_CONSUMER_DOWN
+	TASK_DEAD_QUEUE
+	TASK_RETRY_READY
 )
 
 type WALEvent struct {
