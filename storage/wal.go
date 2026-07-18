@@ -6,10 +6,12 @@ import (
 )
 
 type WAL struct {
-	file *os.File
+	file         *os.File
+	snapshotFile *os.File
+	NextEventID  uint64
 }
 
-func NewWal(path string) (*WAL, error) {
+func NewWal(path string, snapshotPath string) (*WAL, error) {
 
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0640)
 
@@ -17,8 +19,14 @@ func NewWal(path string) (*WAL, error) {
 		return nil, fmt.Errorf("failed to open wal file: %w", err)
 	}
 
+	snapshotfile, err := os.OpenFile(snapshotPath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0640)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open wal file: %w", err)
+	}
+
 	wal := &WAL{
-		file: file,
+		file:         file,
+		snapshotFile: snapshotfile,
 	}
 
 	return wal, nil

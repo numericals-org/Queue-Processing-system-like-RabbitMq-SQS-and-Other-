@@ -18,7 +18,7 @@ func main() {
 		fmt.Println("TCP connection issue", err)
 	}
 
-	wal, err := storage.NewWal("data/wal.log")
+	wal, err := storage.NewWal("data/wal/wal.log", "data/snapshot/snapshot.bin")
 
 	if err != nil {
 		fmt.Println(err)
@@ -32,7 +32,9 @@ func main() {
 		Storage:            wal,
 	}
 
-	events, err := Broker.Storage.Replay()
+	events, highestNumber, err := Broker.Storage.Replay()
+
+	wal.NextEventID = highestNumber + 1
 
 	if err != nil {
 		log.Println("issue in reading file", err)

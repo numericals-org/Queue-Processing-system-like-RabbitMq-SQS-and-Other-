@@ -11,12 +11,14 @@ import (
 
 type Storage interface {
 	Append(event types.WALEvent) error
-	Replay() ([]types.WALEvent, error)
+	Replay() ([]types.WALEvent, uint64, error)
 	Close() error
 }
 
 func (w *WAL) Append(event types.WALEvent) error {
 
+	event.WalId = w.NextEventID
+	w.NextEventID++
 	payload, err := json.Marshal(event)
 
 	if err != nil {
@@ -36,10 +38,12 @@ func (w *WAL) Append(event types.WALEvent) error {
 	return nil
 }
 
-func (w *WAL) Replay() ([]types.WALEvent, error) {
+func (w *WAL) Replay() ([]types.WALEvent, uint64, error) {
 	file, err := os.Open(w.file.Name())
+	var highestNumberId uint64
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to open WAL for replay: %w", err)
+		return nil, highestNumberId, fmt.Errorf("failed to open WAL for replay: %w", err)
 	}
 	defer file.Close()
 
@@ -47,6 +51,7 @@ func (w *WAL) Replay() ([]types.WALEvent, error) {
 	var estimatedCount int
 
 	if err == nil && stat.Size() > 0 {
+		// Rough estimate to reduce slice reallocations.
 		estimatedCount = int(stat.Size() / 150)
 	}
 
@@ -61,17 +66,19 @@ func (w *WAL) Replay() ([]types.WALEvent, error) {
 		var event types.WALEvent
 
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal replay event: %w", err)
+			return nil, highestNumberId, fmt.Errorf("failed to unmarshal replay event: %w", err)
 		}
-
+		if event.WalId > highestNumberId {
+			highestNumberId = event.WalId
+		}
 		events = append(events, event)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading WAL stream: %w", err)
+		return nil, highestNumberId, fmt.Errorf("error reading WAL stream: %w", err)
 	}
 
-	return events, nil
+	return events, highestNumberId, nil
 }
 
 func (w *WAL) Close() error {

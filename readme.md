@@ -919,3 +919,35 @@ func (b *Broker) MarkMessageProcessing(messageId string, consumerId string, Proc
 	}
 }
 ```
+
+we start adding indexing in our Wal to maintain the logs sequence which important to help as with snapshots. the key we use is WalId for it. it's identifier for the log.
+now WAL Struct look like this :- 
+```
+type WAL struct {
+	file        *os.File
+	NextEventID uint64
+}
+```
+
+in Append
+```
+func (w *WAL) Append(event types.WALEvent) error {
+
+	event.WalId = w.NextEventID
+	w.NextEventID++
+	payload, err := json.Marshal(event)
+
+}
+```
+
+in Replay
+```
+func (w *WAL) Replay() ([]types.WALEvent, uint64, error) {
+	var highestNumberId uint64
+
+	if event.WalId > highestNumberId {
+			highestNumberId = event.WalId
+		}
+	
+}
+```

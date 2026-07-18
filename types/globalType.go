@@ -70,6 +70,8 @@ type Message struct {
 	RetrieveAt          time.Time
 }
 
+// types related to WAL(write ahead logs)
+
 type WALEType int
 
 const (
@@ -84,6 +86,7 @@ const (
 )
 
 type WALEvent struct {
+	WalId      uint64
 	EventType  WALEType
 	MessageId  string
 	ConsumerId string
