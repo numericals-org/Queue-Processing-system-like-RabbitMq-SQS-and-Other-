@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/numericals/queueSys/types"
@@ -19,6 +20,7 @@ func (b *Broker) RetryWatcher() {
 			}
 
 			if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) {
+				fmt.Println("got new message in REtry watcher", msg.RetrieveAt)
 				b.Commit(types.TASK_RETRY_READY, msg.MessageId, msg.ConsumerId, nil)
 				retrieved = true
 			}

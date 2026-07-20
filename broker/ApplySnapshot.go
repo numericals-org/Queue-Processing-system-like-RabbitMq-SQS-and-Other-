@@ -1,8 +1,15 @@
 package broker
 
-import "github.com/numericals/queueSys/storage"
+import (
+	"github.com/numericals/queueSys/storage"
+)
 
 func (b *Broker) ApplySnapshot(snapshot *storage.Snapshot) {
+
+	if snapshot == nil {
+		return
+	}
+
 	b.LastAppliedEventID = snapshot.Metadata.LastAppliedEventID
 	if len(snapshot.Messages) > 0 {
 		messages := storage.ConvertSnapshotMessagesToMessages(snapshot.Messages)

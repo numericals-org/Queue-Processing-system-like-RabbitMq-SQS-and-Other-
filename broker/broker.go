@@ -20,4 +20,5 @@ type Broker struct {
 	DefaultRetryDelay  time.Duration
 	Storage            storage.Storage
 	LastAppliedEventID uint64
+	SnapshotNotify     chan struct{}
 }

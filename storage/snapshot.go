@@ -71,17 +71,25 @@ func (w *WAL) CreateSnapshot(messages []types.Message, deadLetterQueue []types.M
 }
 
 func (w *WAL) LoadSnapshot() (*Snapshot, error) {
+
 	data, err := os.ReadFile(w.snapshotFile.Name())
 
 	if err != nil {
 		return nil, err
 	}
 
+	if len(data) <= 0 {
+		return nil, nil
+	}
+
 	var snapshot Snapshot
 
 	if err := json.Unmarshal(data, &snapshot); err != nil {
+		fmt.Println(data, err)
 		return nil, err
 	}
+
+	fmt.Println(snapshot)
 
 	return &snapshot, nil
 }

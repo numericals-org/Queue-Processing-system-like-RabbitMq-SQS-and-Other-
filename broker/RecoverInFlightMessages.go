@@ -7,6 +7,7 @@ import (
 )
 
 func (b *Broker) RecoverInFlightMessages() {
+	b.Mu.Lock()
 	for i := range b.Messages {
 		msg := &b.Messages[i]
 
@@ -18,6 +19,7 @@ func (b *Broker) RecoverInFlightMessages() {
 		msg.ConsumerId = ""
 		msg.ProcessingStartedAt = time.Time{}
 	}
+	b.Mu.Unlock()
 
 	b.Notify <- true
 }

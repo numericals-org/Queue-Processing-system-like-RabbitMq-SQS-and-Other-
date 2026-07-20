@@ -128,7 +128,6 @@ A lightweight, durable, and extensible message broker built from scratch in Go. 
 - ⬜ Metrics API
 - ⬜ Authentication
 - ⬜ Leader/Follower Replication
-
 **Status:** Planned
 
 ---

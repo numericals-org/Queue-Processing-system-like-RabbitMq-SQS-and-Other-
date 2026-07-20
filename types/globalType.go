@@ -46,7 +46,8 @@ const (
 type MProgress int
 
 const (
-	WAITING MProgress = iota
+	READY MProgress = iota
+	WAITING
 	PROCESS
 	DELETE
 )

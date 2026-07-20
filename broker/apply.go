@@ -13,7 +13,7 @@ func (b *Broker) Apply(event types.WALEvent) {
 		b.Messages = append(b.Messages, *event.Message)
 
 	case types.TASK_ACK:
-		b.RemoveMessage(event.Message.MessageId)
+		b.RemoveMessage(event.MessageId)
 
 	case types.TASK_DISPATCH:
 		MSG := b.FindMessageById(event.MessageId)

@@ -10,7 +10,7 @@ func (b *Broker) GetEarliestMessage() *types.Message {
 	for i := range b.Messages {
 		msg := &b.Messages[i]
 
-		if msg.Progress != types.WAITING {
+		if msg.Progress != types.WAITING && msg.Progress != types.READY {
 			continue
 		}
 

@@ -18,5 +18,8 @@ func (b *Broker) Commit(task types.WALEType, messageId string, consumerId string
 
 	if err != nil {
 		log.Println("commit unsuccessfully", err)
+		return
 	}
+
+	b.SnapshotNotify <- struct{}{}
 }

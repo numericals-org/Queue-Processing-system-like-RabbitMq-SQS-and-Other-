@@ -11,7 +11,7 @@ func (b *Broker) CreateMessage(content []byte, RetryAfter time.Duration) *types.
 	return &types.Message{
 		MessageId:  uuid.New().String(),
 		Content:    content,
-		Progress:   types.WAITING,
+		Progress:   types.READY,
 		RetryAfter: RetryAfter,
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	Broker "github.com/numericals/queueSys/broker"
+	"github.com/numericals/queueSys/service"
 	"github.com/numericals/queueSys/storage"
 )
 
@@ -30,7 +31,10 @@ func main() {
 		VisibilityTimeout:  30,
 		DefaultRetryDelay:  5 * time.Second,
 		Storage:            wal,
+		SnapshotNotify:     make(chan struct{}, 1),
 	}
+
+	SnapshotManager := service.NewSnapshotManager(wal, &Broker)
 
 	snap, err := wal.LoadSnapshot()
 
@@ -53,8 +57,11 @@ func main() {
 	for _, event := range events {
 		Broker.Apply(event)
 	}
+	fmt.Println("working at line number 59")
 
-	Broker.RecoverInFlightMessages()
+	go Broker.RecoverInFlightMessages()
+
+	go SnapshotManager.Start()
 
 	go Broker.Dispatcher()
 	go Broker.VisibilityWatcher()
