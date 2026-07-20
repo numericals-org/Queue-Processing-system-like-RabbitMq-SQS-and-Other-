@@ -19,4 +19,5 @@ type Broker struct {
 	VisibilityTimeout  int
 	DefaultRetryDelay  time.Duration
 	Storage            storage.Storage
+	LastAppliedEventID uint64
 }

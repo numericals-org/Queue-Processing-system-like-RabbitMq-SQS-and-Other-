@@ -32,12 +32,22 @@ func main() {
 		Storage:            wal,
 	}
 
-	events, highestNumber, err := Broker.Storage.Replay()
+	snap, err := wal.LoadSnapshot()
+
+	if err != nil {
+		log.Println("issue in reading file", err)
+		return
+	}
+
+	Broker.ApplySnapshot(snap)
+
+	events, highestNumber, err := Broker.Storage.Replay(Broker.LastAppliedEventID)
 
 	wal.NextEventID = highestNumber + 1
 
 	if err != nil {
 		log.Println("issue in reading file", err)
+		return
 	}
 
 	for _, event := range events {

@@ -11,7 +11,7 @@ import (
 
 type Storage interface {
 	Append(event types.WALEvent) error
-	Replay() ([]types.WALEvent, uint64, error)
+	Replay(LastAppliedEventID uint64) ([]types.WALEvent, uint64, error)
 	Close() error
 }
 
@@ -38,7 +38,7 @@ func (w *WAL) Append(event types.WALEvent) error {
 	return nil
 }
 
-func (w *WAL) Replay() ([]types.WALEvent, uint64, error) {
+func (w *WAL) Replay(LastAppliedEventID uint64) ([]types.WALEvent, uint64, error) {
 	file, err := os.Open(w.file.Name())
 	var highestNumberId uint64
 
@@ -68,9 +68,15 @@ func (w *WAL) Replay() ([]types.WALEvent, uint64, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			return nil, highestNumberId, fmt.Errorf("failed to unmarshal replay event: %w", err)
 		}
+
 		if event.WalId > highestNumberId {
 			highestNumberId = event.WalId
 		}
+
+		if event.WalId <= LastAppliedEventID {
+			continue
+		}
+
 		events = append(events, event)
 	}
 

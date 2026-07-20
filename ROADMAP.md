@@ -80,14 +80,14 @@ A lightweight, durable, and extensible message broker built from scratch in Go. 
 ### Remaining
 - ✅ Snapshot Creation
 - ✅ Snapshot Loading
-- ⬜ Snapshot Recovery
+- ✅ Snapshot Recovery
 
 ---
 
 ## Recovery
 
 ### Remaining
-- ⬜ Startup Recovery Flow
+- ✅ Startup Recovery Flow
 - ⬜ Crash Recovery Tests
 - ⬜ Integration Tests
 
