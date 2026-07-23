@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -31,7 +32,8 @@ func (s *SnapshotManager) Start() {
 		select {
 		case <-s.SnapshotNotify:
 			s.Broker.Mu.Lock()
-			if s.Broker.EventsSinceLastSnapshot >= 10 {
+			fmt.Println(s.Broker.EventsSinceLastSnapshot)
+			if s.Broker.EventsSinceLastSnapshot >= 1000 {
 				err := s.WAL.CreateSnapshot(s.Broker.Messages, s.Broker.DeadLetterQueue, s.Broker.LastAppliedEventID)
 				if err != nil {
 					log.Println("err while creating snapshot", err)

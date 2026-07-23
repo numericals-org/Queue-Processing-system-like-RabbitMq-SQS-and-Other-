@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/numericals/queueSys/types"
 )
 
 type Storage interface {
 	Append(event types.WALEvent) error
-	Replay(LastAppliedEventID uint64) ([]types.WALEvent, uint64, error)
-	Close() error
+	Replay(LastAppliedEventID uint64, path string) ([]types.WALEvent, uint64, error)
 }
 
 func (w *WAL) Append(event types.WALEvent) error {
@@ -25,21 +25,47 @@ func (w *WAL) Append(event types.WALEvent) error {
 		return fmt.Errorf("failed to marshal WAL event: %w", err)
 	}
 
+	INFO, err := w.file.Stat()
+
+	if err != nil {
+		return err
+	}
+
+	totalSize := INFO.Size() + int64(len(payload))
+	var MaxSegmentSize int64 = 100 * 1024 * 1024
+	if totalSize > MaxSegmentSize {
+		if err := w.file.Sync(); err != nil {
+			return fmt.Errorf("failed to sync wal file: %w", err)
+		}
+		err = w.file.Close()
+
+		if err != nil {
+			return fmt.Errorf("failed to close wal file: %w", err)
+		}
+
+		filePath := w.walFilePath + "wal_" + strconv.FormatUint(w.WalId+1, 10)
+		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0640)
+
+		if err != nil {
+			return fmt.Errorf("failed to open wal file: %w", err)
+		}
+		w.WalId++
+
+		w.file = file
+	}
+
 	_, err = w.file.Write(append(payload, '\n'))
 
 	if err != nil {
 		return fmt.Errorf("failed writing to cache: %w", err)
 	}
 
-	if err := w.file.Sync(); err != nil {
-		return fmt.Errorf("failed to sync wal file: %w", err)
-	}
-
 	return nil
 }
 
-func (w *WAL) Replay(LastAppliedEventID uint64) ([]types.WALEvent, uint64, error) {
-	file, err := os.Open(w.file.Name())
+func (w *WAL) Replay(LastAppliedEventID uint64, path string) ([]types.WALEvent, uint64, error) {
+	filepath := w.walFilePath + path
+	file, err := os.Open(filepath)
 	var highestNumberId uint64
 
 	if err != nil {
@@ -85,8 +111,4 @@ func (w *WAL) Replay(LastAppliedEventID uint64) ([]types.WALEvent, uint64, error
 	}
 
 	return events, highestNumberId, nil
-}
-
-func (w *WAL) Close() error {
-	return w.file.Close()
 }

@@ -50,13 +50,11 @@ func (w *WAL) CreateSnapshot(messages []types.Message, deadLetterQueue []types.M
 		return fmt.Errorf("marshal snapshot: %w", err)
 	}
 
-	file, err := os.OpenFile(w.snapshotFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0640)
+	file, err := os.OpenFile(w.snapshotTempFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0640)
 
 	if err != nil {
 		return fmt.Errorf("failed truncate to file: %w", err)
 	}
-
-	defer file.Close()
 
 	_, err = file.Write(snapshotByte)
 
@@ -65,7 +63,16 @@ func (w *WAL) CreateSnapshot(messages []types.Message, deadLetterQueue []types.M
 	}
 
 	if err := file.Sync(); err != nil {
+		file.Close()
 		return fmt.Errorf("failed to sync wal file: %w", err)
+	}
+
+	if err := file.Close(); err != nil {
+		return err
+	}
+
+	if err := os.Rename(file.Name(), w.snapshotFile); err != nil {
+		return fmt.Errorf("rename snapshot: %w", err)
 	}
 
 	return nil
