@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/numericals/queueSys/types"
@@ -21,8 +22,9 @@ func (b *Broker) VisibilityWatcher() {
 			timeout := time.Since(msg.ProcessingStartedAt)
 
 			if timeout >= time.Duration(b.VisibilityTimeout)*time.Second {
+				fmt.Println("got new message in visibitlity watcher", msg.RetrieveAt)
 				b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil)
-				b.RetrieveMessage(msg.MessageId, msg.ConsumerId, 0, types.TASK_TIMEOUT)
+				b.RetrieveMessage(msg.MessageId, msg.ConsumerId, msg.RetryAfter, types.TASK_TIMEOUT)
 				retrieved = true
 			}
 		}

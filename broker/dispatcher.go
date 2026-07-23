@@ -2,6 +2,7 @@ package broker
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	types "github.com/numericals/queueSys/types"
@@ -13,6 +14,9 @@ func (b *Broker) Dispatcher() {
 		b.Mu.RLock()
 		Message := b.GetEarliestMessage()
 		b.Mu.RUnlock()
+
+		fmt.Println("Dispatcher", Message)
+		fmt.Println("Dispatcher notify", available)
 
 		if available && Message != nil && Message.DeliveryAttempts <= b.MaxDeliveryAttempt {
 			filteredConsumer, foundConsumer := b.FindConsumer()
@@ -36,9 +40,11 @@ func (b *Broker) Dispatcher() {
 			b.UpdateMessageProgress(types.PROCESS, Message.MessageId, filteredConsumer.ConsumerId)
 			b.Mu.Unlock()
 		} else if Message != nil {
+			b.Mu.Lock()
 			b.DeadLetterQueue = append(b.DeadLetterQueue, *Message)
 			b.Commit(types.TASK_DEAD_QUEUE, Message.MessageId, Message.ConsumerId, nil)
 			b.RemoveMessage(Message.MessageId)
+			b.Mu.Unlock()
 		}
 	}
 }

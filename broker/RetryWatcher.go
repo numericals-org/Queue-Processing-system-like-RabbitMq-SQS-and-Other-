@@ -19,9 +19,10 @@ func (b *Broker) RetryWatcher() {
 				continue
 			}
 
-			if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) {
+			if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) && len(b.Consumers) > 0 {
 				fmt.Println("got new message in REtry watcher", msg.RetrieveAt)
 				b.Commit(types.TASK_RETRY_READY, msg.MessageId, msg.ConsumerId, nil)
+				msg.RetrieveAt = time.Now().Add(msg.RetryAfter)
 				retrieved = true
 			}
 		}

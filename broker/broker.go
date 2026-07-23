@@ -9,16 +9,17 @@ import (
 )
 
 type Broker struct {
-	Producers          []types.Producer
-	Consumers          []types.Consumer
-	Messages           []types.Message
-	Notify             chan bool
-	Mu                 sync.RWMutex
-	DeadLetterQueue    []types.Message
-	MaxDeliveryAttempt int
-	VisibilityTimeout  int
-	DefaultRetryDelay  time.Duration
-	Storage            storage.Storage
-	LastAppliedEventID uint64
-	SnapshotNotify     chan struct{}
+	Producers               []types.Producer
+	Consumers               []types.Consumer
+	Messages                []types.Message
+	Notify                  chan bool
+	Mu                      sync.RWMutex
+	DeadLetterQueue         []types.Message
+	MaxDeliveryAttempt      int
+	VisibilityTimeout       int
+	DefaultRetryDelay       time.Duration
+	Storage                 storage.Storage
+	LastAppliedEventID      uint64
+	EventsSinceLastSnapshot uint64
+	SnapshotNotify          chan struct{}
 }

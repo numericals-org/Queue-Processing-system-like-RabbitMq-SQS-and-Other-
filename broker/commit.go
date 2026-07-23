@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -16,10 +17,12 @@ func (b *Broker) Commit(task types.WALEType, messageId string, consumerId string
 		Message:    msg,
 	})
 
+	fmt.Print("Commit", messageId, consumerId)
+
 	if err != nil {
 		log.Println("commit unsuccessfully", err)
 		return
 	}
-
+	b.EventsSinceLastSnapshot++
 	b.SnapshotNotify <- struct{}{}
 }

@@ -63,6 +63,9 @@ func (b *Broker) RetrieveMessages(consumerId string, duration time.Duration, tas
 			message.LastConsumerId = message.ConsumerId
 			message.ConsumerId = ""
 			message.RetrieveAt = time.Now().Add(duration)
+			message.RetryAfter = duration
+
+			return
 		}
 	}
 }
@@ -81,6 +84,9 @@ func (b *Broker) RetrieveMessage(MessageId string, consumerId string, duration t
 			message.LastConsumerId = message.ConsumerId
 			message.ConsumerId = ""
 			message.RetrieveAt = time.Now().Add(duration)
+			message.RetryAfter = duration
+
+			return
 		}
 	}
 }
@@ -103,6 +109,8 @@ func (b *Broker) RequeueMessage(messageId string, consumerId string) {
 			message.Progress = types.WAITING
 			message.LastConsumerId = consumerId
 			message.ConsumerId = ""
+
+			return
 		}
 	}
 }
@@ -114,6 +122,8 @@ func (b *Broker) MarkMessageProcessing(messageId string, consumerId string, Proc
 			message.Progress = types.PROCESS
 			message.ConsumerId = consumerId
 			message.ProcessingStartedAt = ProcessingStartedAt
+
+			return
 		}
 	}
 }

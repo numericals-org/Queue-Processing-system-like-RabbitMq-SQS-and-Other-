@@ -53,10 +53,10 @@ const (
 )
 
 type Packet struct {
-	Type       Mtype         `json:"type"`
-	MessageId  string        `json:"messageId,omitempty"`
-	Content    []byte        `json:"content,omitempty"`
-	RetryAfter time.Duration `json:"retryAfter,omitempty"`
+	Type       Mtype
+	MessageId  string
+	Content    []byte
+	RetryAfter time.Duration
 }
 
 type Message struct {

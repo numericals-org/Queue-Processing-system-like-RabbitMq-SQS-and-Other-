@@ -15,11 +15,10 @@ func (b *Broker) RecoverInFlightMessages() {
 			continue
 		}
 
-		msg.Progress = types.WAITING
+		msg.Progress = types.READY
 		msg.ConsumerId = ""
 		msg.ProcessingStartedAt = time.Time{}
 	}
 	b.Mu.Unlock()
-
 	b.Notify <- true
 }

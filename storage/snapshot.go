@@ -50,32 +50,36 @@ func (w *WAL) CreateSnapshot(messages []types.Message, deadLetterQueue []types.M
 		return fmt.Errorf("marshal snapshot: %w", err)
 	}
 
-	err = w.snapshotFile.Truncate(0)
+	file, err := os.OpenFile(w.snapshotFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0640)
 
 	if err != nil {
 		return fmt.Errorf("failed truncate to file: %w", err)
 	}
 
-	_, err = w.snapshotFile.Write(snapshotByte)
+	defer file.Close()
+
+	_, err = file.Write(snapshotByte)
 
 	if err != nil {
 		return fmt.Errorf("failed writing to cache: %w", err)
 	}
 
-	if err := w.snapshotFile.Sync(); err != nil {
+	if err := file.Sync(); err != nil {
 		return fmt.Errorf("failed to sync wal file: %w", err)
 	}
 
-	w.snapshotFile.Close()
 	return nil
 }
 
 func (w *WAL) LoadSnapshot() (*Snapshot, error) {
 
-	data, err := os.ReadFile(w.snapshotFile.Name())
+	data, err := os.ReadFile(w.snapshotFile)
 
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read snapshot: %w", err)
 	}
 
 	if len(data) <= 0 {
@@ -85,11 +89,8 @@ func (w *WAL) LoadSnapshot() (*Snapshot, error) {
 	var snapshot Snapshot
 
 	if err := json.Unmarshal(data, &snapshot); err != nil {
-		fmt.Println(data, err)
 		return nil, err
 	}
-
-	fmt.Println(snapshot)
 
 	return &snapshot, nil
 }

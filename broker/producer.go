@@ -2,6 +2,7 @@ package broker
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 
@@ -22,20 +23,24 @@ func (b *Broker) Receiver(Conn net.Conn) {
 				b.Mu.Unlock()
 				return
 			}
-			b.RetrieveMessages(*consumerId, 0, types.TASK_CONSUMER_DOWN)
+			b.RetrieveMessages(*consumerId, b.DefaultRetryDelay, types.TASK_CONSUMER_DOWN)
 			b.Mu.Unlock()
 			b.Notify <- true
 			return
 		}
-
 		var MSG types.Packet
 		err = json.Unmarshal(buffer[:length], &MSG)
 		if err != nil {
 			log.Println("unable to Unmarshal the json", err)
 		}
 
+		fmt.Println("line before switch", MSG)
+		fmt.Printf("MSG.Type = %v (%T)\n", MSG.Type, MSG.Type)
+		fmt.Printf("REGISTER_P = %v (%T)\n", types.REGISTER_P, types.REGISTER_P)
+		fmt.Println(MSG.Type == types.REGISTER_P)
 		switch MSG.Type {
 		case types.REGISTER_P:
+			fmt.Println("Register_P", MSG)
 			b.Mu.Lock()
 			b.Producers = append(b.Producers, types.Producer{
 				Conn:       Conn,
@@ -50,13 +55,16 @@ func (b *Broker) Receiver(Conn net.Conn) {
 				ConsumerId: ID,
 				Status:     types.IDLE,
 			})
+			fmt.Println("Register_C", MSG)
 			b.Mu.Unlock()
 			b.Notify <- true
 		case types.QUEUE:
 			b.Mu.Lock()
+			log.Println("MESSAGE OBJECT AT PRODUCER- Line no 61", MSG)
 			Message := b.CreateMessage(MSG.Content, MSG.RetryAfter)
 			b.Commit(types.TASK_QUEUE, "", "", Message)
 			b.Messages = append(b.Messages, *Message)
+			fmt.Println("QUEUE", MSG)
 			b.Mu.Unlock()
 			b.Notify <- true
 		case types.DISAVOW:
@@ -73,6 +81,7 @@ func (b *Broker) Receiver(Conn net.Conn) {
 				b.Commit(types.TASK_DISAVOW, MSG.MessageId, *consumerId, nil)
 				b.RetrieveMessage(MSG.MessageId, *consumerId, b.DefaultRetryDelay, types.TASK_DISAVOW)
 			}
+			fmt.Println("DISAVOW", MSG)
 			b.Mu.Unlock()
 			b.Notify <- true
 		case types.ACKNOWLEDGE:
@@ -83,6 +92,7 @@ func (b *Broker) Receiver(Conn net.Conn) {
 			}
 			b.Commit(types.TASK_ACK, MSG.MessageId, *consumerId, nil)
 			b.RemoveMessage(MSG.MessageId)
+			fmt.Println("ACKNOWLEDGE", MSG)
 			b.Mu.Unlock()
 			b.Notify <- true
 		}

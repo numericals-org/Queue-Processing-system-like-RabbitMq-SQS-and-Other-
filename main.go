@@ -29,7 +29,7 @@ func main() {
 		Notify:             make(chan bool),
 		MaxDeliveryAttempt: 3,
 		VisibilityTimeout:  30,
-		DefaultRetryDelay:  5 * time.Second,
+		DefaultRetryDelay:  30 * time.Second,
 		Storage:            wal,
 		SnapshotNotify:     make(chan struct{}, 1),
 	}
@@ -57,12 +57,9 @@ func main() {
 	for _, event := range events {
 		Broker.Apply(event)
 	}
-	fmt.Println("working at line number 59")
 
 	go Broker.RecoverInFlightMessages()
-
 	go SnapshotManager.Start()
-
 	go Broker.Dispatcher()
 	go Broker.VisibilityWatcher()
 	go Broker.RetryWatcher()
