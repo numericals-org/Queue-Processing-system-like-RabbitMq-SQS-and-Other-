@@ -1,12 +1,15 @@
 package storage
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	"github.com/numericals/queueSys/types"
+	"github.com/numericals/queueSys/utils"
 )
 
 type Metadata struct {
@@ -100,4 +103,65 @@ func (w *WAL) LoadSnapshot() (*Snapshot, error) {
 	}
 
 	return &snapshot, nil
+}
+
+func (w *WAL) CleanUp(LastAppliedEventID uint64) {
+	files, err := os.ReadDir(w.walFilePath)
+
+	if err != nil {
+		log.Println("issue in reading directory", err)
+		return
+	}
+
+	files = utils.SortFilesArray(files)
+
+	for _, file := range files {
+		deleteTheFile := true
+		if w.file.Name() == file.Name() {
+			continue
+		}
+
+		openfile, err := os.Open(w.walFilePath + file.Name())
+		if err != nil {
+			log.Println("error in opening file", err)
+			continue
+		}
+		scanner := bufio.NewScanner(openfile)
+
+		for scanner.Scan() {
+			var event types.WALEvent
+
+			if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
+				fmt.Println("failed to unmarshal replay event: %w", err)
+				deleteTheFile = false
+				break
+			}
+
+			if event.WalId <= LastAppliedEventID {
+				continue
+			}
+			deleteTheFile = false
+			break
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Println("error reading WAL stream: %w", err)
+			deleteTheFile = false
+		}
+		err = openfile.Close()
+
+		if err != nil {
+			log.Println("error in closing file", err)
+			continue
+		}
+
+		if deleteTheFile == true {
+			err := os.Remove(w.walFilePath + file.Name())
+
+			if err != nil {
+				log.Println("error in remove file", err)
+				continue
+			}
+		}
+	}
 }

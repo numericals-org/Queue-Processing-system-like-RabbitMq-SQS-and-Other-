@@ -40,6 +40,7 @@ func (s *SnapshotManager) Start() {
 					continue
 				}
 				s.Broker.EventsSinceLastSnapshot = 0
+				s.WAL.CleanUp(s.Broker.LastAppliedEventID)
 				ticker.Reset(5 * time.Minute)
 			}
 			s.Broker.Mu.Unlock()
@@ -51,6 +52,7 @@ func (s *SnapshotManager) Start() {
 					continue
 				}
 				s.Broker.EventsSinceLastSnapshot = 0
+				s.WAL.CleanUp(s.Broker.LastAppliedEventID)
 			}
 		}
 	}

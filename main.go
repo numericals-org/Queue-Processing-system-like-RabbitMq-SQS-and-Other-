@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"sort"
 	"time"
 
 	Broker "github.com/numericals/queueSys/broker"
@@ -55,20 +54,7 @@ func main() {
 		log.Println("issue in reading directory", err)
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		file_1, err := files[i].Info()
-
-		if err != nil {
-			log.Println("issue in reading file no :=", i, ",", err)
-		}
-
-		file_2, err := files[j].Info()
-
-		if err != nil {
-			log.Println("issue in reading file no :=", j, ",", err)
-		}
-		return utils.ExtractNumber(file_1.Name()) < utils.ExtractNumber(file_2.Name())
-	})
+	files = utils.SortFilesArray(files)
 
 	var events []types.WALEvent
 	var highestNumber uint64
