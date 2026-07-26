@@ -25,6 +25,7 @@ func NewSnapshotManager(WAL *storage.WAL, Broker *broker.Broker) *SnapshotManage
 }
 
 func (s *SnapshotManager) Start() {
+	defer s.Broker.Wg.Done()
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
@@ -45,6 +46,7 @@ func (s *SnapshotManager) Start() {
 			}
 			s.Broker.Mu.Unlock()
 		case <-ticker.C:
+			s.Broker.Mu.Lock()
 			if s.Broker.EventsSinceLastSnapshot > 0 {
 				err := s.WAL.CreateSnapshot(s.Broker.Messages, s.Broker.DeadLetterQueue, s.Broker.LastAppliedEventID)
 				if err != nil {
@@ -54,6 +56,25 @@ func (s *SnapshotManager) Start() {
 				s.Broker.EventsSinceLastSnapshot = 0
 				s.WAL.CleanUp(s.Broker.LastAppliedEventID)
 			}
+			s.Broker.Mu.Unlock()
+		case <-s.Broker.Ctx.Done():
+			return
 		}
 	}
+}
+
+func (s *SnapshotManager) Flush() error {
+	s.Broker.Mu.Lock()
+	defer s.Broker.Mu.Unlock()
+	if err := s.WAL.CreateSnapshot(
+		s.Broker.Messages,
+		s.Broker.DeadLetterQueue,
+		s.Broker.LastAppliedEventID,
+	); err != nil {
+		return fmt.Errorf("create snapshot: %w", err)
+	}
+	s.Broker.EventsSinceLastSnapshot = 0
+	s.WAL.CleanUp(s.Broker.LastAppliedEventID)
+
+	return nil
 }

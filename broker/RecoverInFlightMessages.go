@@ -8,6 +8,7 @@ import (
 
 func (b *Broker) RecoverInFlightMessages() {
 	b.Mu.Lock()
+
 	for i := range b.Messages {
 		msg := &b.Messages[i]
 
@@ -20,5 +21,9 @@ func (b *Broker) RecoverInFlightMessages() {
 		msg.ProcessingStartedAt = time.Time{}
 	}
 	b.Mu.Unlock()
-	b.Notify <- true
+	select {
+	case b.Notify <- true:
+	case <-b.Ctx.Done():
+		return
+	}
 }

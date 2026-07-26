@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -22,4 +23,6 @@ type Broker struct {
 	LastAppliedEventID      uint64
 	EventsSinceLastSnapshot uint64
 	SnapshotNotify          chan struct{}
+	Ctx                     context.Context
+	Wg                      sync.WaitGroup
 }

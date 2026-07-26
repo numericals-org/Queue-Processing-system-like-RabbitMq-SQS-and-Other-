@@ -13,6 +13,7 @@ import (
 type Storage interface {
 	Append(event types.WALEvent) error
 	Replay(LastAppliedEventID uint64, path string) ([]types.WALEvent, uint64, error)
+	Close() error
 }
 
 func (w *WAL) Append(event types.WALEvent) error {
@@ -111,4 +112,11 @@ func (w *WAL) Replay(LastAppliedEventID uint64, path string) ([]types.WALEvent, 
 	}
 
 	return events, highestNumberId, nil
+}
+
+func (w *WAL) Close() error {
+	if w.file != nil {
+		return w.file.Close()
+	}
+	return nil
 }

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"time"
 
 	Broker "github.com/numericals/queueSys/broker"
@@ -16,10 +18,13 @@ import (
 
 func main() {
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	ln, err := net.Listen("tcp", ":6464")
 
 	if err != nil {
-		fmt.Println("TCP connection issue", err)
+		log.Fatal(err)
 	}
 
 	wal, err := storage.NewWal("data/wal/", "data/snapshot/snapshot.bin", "data/snapshot/snapshot.bin.temp")
@@ -35,6 +40,7 @@ func main() {
 		DefaultRetryDelay:  30 * time.Second,
 		Storage:            wal,
 		SnapshotNotify:     make(chan struct{}, 1),
+		Ctx:                ctx,
 	}
 
 	SnapshotManager := service.NewSnapshotManager(wal, &Broker)
@@ -79,22 +85,41 @@ func main() {
 		Broker.Apply(event)
 	}
 
-	go Broker.RecoverInFlightMessages()
+	Broker.RecoverInFlightMessages()
+
+	Broker.Wg.Add(1)
 	go SnapshotManager.Start()
+
+	Broker.Wg.Add(1)
 	go Broker.Dispatcher()
+
+	Broker.Wg.Add(1)
 	go Broker.VisibilityWatcher()
+
+	Broker.Wg.Add(1)
 	go Broker.RetryWatcher()
+
+	go func() {
+		<-ctx.Done()
+		ln.Close()
+	}()
 
 	for {
 		conn, err := ln.Accept()
 
 		if err != nil {
-			log.Println("Get issue while getting the conn info", err)
+			if ctx.Err() != nil {
+				break
+			}
+			log.Println("accept error:", err)
+			continue
 		}
 
 		fmt.Println("our server getting connection")
 
+		Broker.Wg.Add(1)
 		go Broker.Receiver(conn)
 	}
 
+	Broker.Shutdown(SnapshotManager.Flush)
 }

@@ -59,7 +59,7 @@ func main() {
 			log.Fatal(err.Error())
 		}
 		// fmt.Println(val)
-		fmt.Println(&conn, "GET / HTTP/1.0\r\n\r\n")
+		fmt.Println(&conn, "GET / HTTP/1.0")
 	}
 
 	// ([]byte("Here is a string...."))

@@ -8,28 +8,35 @@ import (
 )
 
 func (b *Broker) RetryWatcher() {
+	defer b.Wg.Done()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
-		time.Sleep(1 * time.Second)
-		retrieved := false
-		b.Mu.Lock()
+		select {
+		case <-b.Ctx.Done():
+			return
+		case <-ticker.C:
+			retrieved := false
+			b.Mu.Lock()
 
-		for i := range b.Messages {
-			msg := &b.Messages[i]
-			if msg.Progress != types.WAITING {
-				continue
+			for i := range b.Messages {
+				msg := &b.Messages[i]
+				if msg.Progress != types.WAITING {
+					continue
+				}
+
+				if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) && len(b.Consumers) > 0 {
+					fmt.Println("got new message in REtry watcher", msg.RetrieveAt)
+					b.Commit(types.TASK_RETRY_READY, msg.MessageId, msg.ConsumerId, nil)
+					msg.RetrieveAt = time.Now().Add(msg.RetryAfter)
+					retrieved = true
+				}
 			}
 
-			if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) && len(b.Consumers) > 0 {
-				fmt.Println("got new message in REtry watcher", msg.RetrieveAt)
-				b.Commit(types.TASK_RETRY_READY, msg.MessageId, msg.ConsumerId, nil)
-				msg.RetrieveAt = time.Now().Add(msg.RetryAfter)
-				retrieved = true
+			b.Mu.Unlock()
+			if retrieved == true {
+				b.Notify <- true
 			}
-		}
-
-		b.Mu.Unlock()
-		if retrieved == true {
-			b.Notify <- true
 		}
 	}
 }

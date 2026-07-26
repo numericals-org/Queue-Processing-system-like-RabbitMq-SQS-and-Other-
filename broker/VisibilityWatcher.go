@@ -8,30 +8,37 @@ import (
 )
 
 func (b *Broker) VisibilityWatcher() {
+	defer b.Wg.Done()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
-		time.Sleep(1 * time.Second)
-		retrieved := false
-		b.Mu.Lock()
+		select {
+		case <-b.Ctx.Done():
+			return
+		case <-ticker.C:
+			retrieved := false
+			b.Mu.Lock()
 
-		for i := range b.Messages {
-			msg := &b.Messages[i]
-			if msg.Progress != types.PROCESS {
-				continue
+			for i := range b.Messages {
+				msg := &b.Messages[i]
+				if msg.Progress != types.PROCESS {
+					continue
+				}
+
+				timeout := time.Since(msg.ProcessingStartedAt)
+
+				if timeout >= time.Duration(b.VisibilityTimeout)*time.Second {
+					fmt.Println("got new message in visibitlity watcher", msg.RetrieveAt)
+					b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil)
+					b.RetrieveMessage(msg.MessageId, msg.ConsumerId, msg.RetryAfter, types.TASK_TIMEOUT)
+					retrieved = true
+				}
 			}
 
-			timeout := time.Since(msg.ProcessingStartedAt)
-
-			if timeout >= time.Duration(b.VisibilityTimeout)*time.Second {
-				fmt.Println("got new message in visibitlity watcher", msg.RetrieveAt)
-				b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil)
-				b.RetrieveMessage(msg.MessageId, msg.ConsumerId, msg.RetryAfter, types.TASK_TIMEOUT)
-				retrieved = true
+			b.Mu.Unlock()
+			if retrieved == true {
+				b.Notify <- true
 			}
-		}
-
-		b.Mu.Unlock()
-		if retrieved == true {
-			b.Notify <- true
 		}
 	}
 }
