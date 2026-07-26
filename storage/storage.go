@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/numericals/queueSys/types"
+	"github.com/numericals/queueSys/utils"
 )
 
 type Storage interface {
@@ -73,6 +74,10 @@ func (w *WAL) Replay(LastAppliedEventID uint64, path string) ([]types.WALEvent, 
 		return nil, highestNumberId, fmt.Errorf("failed to open WAL for replay: %w", err)
 	}
 	defer file.Close()
+
+	if utils.ExtractNumber(path) > int(w.WalId) {
+		w.WalId = uint64(utils.ExtractNumber(path))
+	}
 
 	stat, err := file.Stat()
 	var estimatedCount int

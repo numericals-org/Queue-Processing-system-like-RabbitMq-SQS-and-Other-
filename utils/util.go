@@ -10,6 +10,7 @@ import (
 
 func ExtractNumber(s string) int {
 	numStr := strings.TrimPrefix(s, "wal_")
+	numStr = strings.TrimSuffix(numStr, ".log")
 	num, err := strconv.Atoi(numStr)
 
 	if err != nil {

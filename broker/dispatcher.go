@@ -2,8 +2,8 @@ package broker
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
+	"time"
 
 	types "github.com/numericals/queueSys/types"
 )
@@ -17,12 +17,10 @@ func (b *Broker) Dispatcher() {
 			Message := b.GetEarliestMessage()
 			b.Mu.RUnlock()
 
-			fmt.Println("Dispatcher", Message)
-			fmt.Println("Dispatcher notify", available)
-
 			if available && Message != nil && Message.DeliveryAttempts <= b.MaxDeliveryAttempt {
 				filteredConsumer, foundConsumer := b.FindConsumer()
 				if !foundConsumer {
+					Message.RetrieveAt = time.Now().Add(Message.RetryAfter)
 					log.Println("Dispatcher: No idle consumers available right now.")
 					continue
 				}

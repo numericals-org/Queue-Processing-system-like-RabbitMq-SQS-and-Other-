@@ -17,7 +17,7 @@ type WAL struct {
 
 func NewWal(path string, snapshotPath string, snapshotTempPath string) (*WAL, error) {
 
-	filePath := path + "wal_" + strconv.FormatUint(0, 10)
+	filePath := path + "wal_" + strconv.FormatUint(0, 10) + ".log"
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0640)
 
 	if err != nil {

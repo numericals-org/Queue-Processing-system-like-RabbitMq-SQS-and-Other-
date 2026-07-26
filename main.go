@@ -85,7 +85,8 @@ func main() {
 		Broker.Apply(event)
 	}
 
-	Broker.RecoverInFlightMessages()
+	go Broker.RecoverInFlightMessages()
+	fmt.Println("i am working")
 
 	Broker.Wg.Add(1)
 	go SnapshotManager.Start()
@@ -106,7 +107,6 @@ func main() {
 
 	for {
 		conn, err := ln.Accept()
-
 		if err != nil {
 			if ctx.Err() != nil {
 				break

@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"fmt"
 	"time"
 
 	types "github.com/numericals/queueSys/types"
@@ -11,10 +12,13 @@ func (b *Broker) GetEarliestMessage() *types.Message {
 		msg := &b.Messages[i]
 
 		if msg.Progress != types.WAITING && msg.Progress != types.READY {
+			fmt.Println("type is wrong", msg)
 			continue
 		}
 
 		if time.Now().Before(msg.RetrieveAt) {
+			fmt.Println("Time", msg.RetrieveAt)
+			fmt.Println("come before time", msg)
 			continue
 		}
 
@@ -39,7 +43,7 @@ func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, cons
 }
 
 func (b *Broker) RemoveMessage(messageId string) {
-	var index int
+	index := -1
 
 	for i := range b.Messages {
 		if b.Messages[i].MessageId == messageId {
@@ -48,7 +52,7 @@ func (b *Broker) RemoveMessage(messageId string) {
 		}
 	}
 
-	if len(b.Messages) <= 0 {
+	if index == -1 {
 		return
 	}
 

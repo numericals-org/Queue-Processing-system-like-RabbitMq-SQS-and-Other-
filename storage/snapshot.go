@@ -33,7 +33,7 @@ type Snapshot struct {
 	DeadLetterQueue []SnapshotMessage
 }
 
-func (w *WAL) CreateSnapshot(messages []types.Message, deadLetterQueue []types.Message, lastAppliedEventID uint64) error {
+func (w *WAL) CreateSnapshot(messages []types.Message, deadLetterQueue []types.Message) error {
 
 	snapshotMessages := ConvertMessagesToSnapshotMessages(messages)
 	snapshotDLQ := ConvertMessagesToSnapshotMessages(deadLetterQueue)
@@ -41,7 +41,7 @@ func (w *WAL) CreateSnapshot(messages []types.Message, deadLetterQueue []types.M
 	snapshot := Snapshot{
 		Metadata: Metadata{
 			Version:            1,
-			LastAppliedEventID: lastAppliedEventID,
+			LastAppliedEventID: w.NextEventID - 1,
 		},
 		DeadLetterQueue: snapshotDLQ,
 		Messages:        snapshotMessages,

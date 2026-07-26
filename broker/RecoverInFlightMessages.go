@@ -8,7 +8,6 @@ import (
 
 func (b *Broker) RecoverInFlightMessages() {
 	b.Mu.Lock()
-
 	for i := range b.Messages {
 		msg := &b.Messages[i]
 
