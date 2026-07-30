@@ -155,7 +155,7 @@ v0.1 ✅ Foundation
 v0.2 ✅ Broker Core
 v0.3 ✅ Reliable Delivery
 v0.4 ✅ Message Lifecycle
-v0.5 🚧 Durable Storage
+v0.5 ✅ Durable Storage
 v0.6 ⬜ Advanced Queue Features
 v0.7 ⬜ Routing
 v0.8 ⬜ Operations & High Availability

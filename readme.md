@@ -951,3 +951,102 @@ func (w *WAL) Replay() ([]types.WALEvent, uint64, error) {
 	
 }
 ```
+
+### DAY 10 - Complete Recover Mechanism use wal(write ahead logs)
+
+#### Start-Up flow
+```
+    												______________________
+													|                    |
+													|      BROKER        |
+													|____________________|
+													         |
+															 |
+															 V
+													______________________
+													|                    |
+													|   Load SnapShot    |
+													|____________________|
+															 |
+															 |
+															 V
+													_____________________
+													|                   |
+													|   Apply SnapShot  |
+													|___________________|
+															 |
+															 |
+															 V
+													_____________________
+													|                   |
+													|  Check Wal Files  |
+													|___________________|
+															 |
+															 |
+															 V
+													_____________________
+													|                   |
+													|  Reply Wal file   |
+													|___________________|
+															 |
+															 |
+															 V
+													_____________________
+													|                   |
+													| Recover In Flight |
+													|___________________|
+
+```
+
+#### Current Folder
+```
+root
+|
+|___ broker
+|    |_ apply.go 
+|    |_ ApplySnapshot.go 
+|    |_ broker.go 
+|    |_ CloseAllConnection.go 
+|    |_ commit.go 
+|    |_ consumer.go
+|    |_ dispatcher.go
+|    |_ message.go
+|    |_ producer.go
+|    |_ queue.go
+|    |_ RecoverInFlightMessages.go
+|    |_ RetryWatcher.go
+|    |_ Shutdown.go
+|    |_ VisibilityWatcher.go
+|
+|___ cmd
+|    |_ client
+|	 |	|_ consumer.go (dummy consumer create script)
+|	 |
+|	 |_ server
+|	 	|_ main.go (dummy producer create script)
+|
+|___ service
+|    |_ snapshotManager.go
+|
+|___ storage
+|    |_ converter.go
+|    |_ snapshot.go
+|    |_ storage.go
+|    |_ wal.go
+|
+|___ data
+|    |_ wal (for store logs files)
+|    |_ snapshot (for store logs files)
+|
+|___ utils
+|	 |_ util.go
+|
+|___ types
+|	 |_ globalType.go (file where all types exists)
+|
+|_ go.mod
+|_ go.sum
+|_ main.go
+|_ readme.md
+```
+we implement Graceful shutdown & Wal with snapshot recover architecture for our broker
