@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 )
 
 type WAL struct {
+	Mu               sync.Mutex
 	walFilePath      string
 	file             *os.File
 	snapshotFile     string

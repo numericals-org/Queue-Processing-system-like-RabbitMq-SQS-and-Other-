@@ -1049,4 +1049,105 @@ root
 |_ main.go
 |_ readme.md
 ```
-we implement Graceful shutdown & Wal with snapshot recover architecture for our broker
+we implement Graceful shutdown & Wal with snapshot recover architecture for our broker.
+
+### DAY 11 - Advanced Queue
+in Advance Queue we add multiple queue configuration and multiple queue system. So, user can add more then one queue and config its as per requirement and more queue type like (Priority Queue). In End of Advance Queue our broker is not just a basic fifo base queue system.
+
+- phase 1:- refactor broker 
+    - Re-structure Message queue to heap
+    - update wal and snapshot struct and architecture
+    - all function where change is needed
+
+in Refactor broker we add more method and change structure which is compatible with multiple queue system some changes look like this:-
+```
+type Queue struct {
+	Name            string
+	Messages        []types.Message
+	DeadLetterQueue []types.Message
+	Config          QueueConfig
+	Mu              sync.RWMutex
+	Metadata        QueueMetadata
+}
+
+type QueueConfig struct {
+	MaxDeliveryAttempt    int
+	VisibilityTimeout     time.Duration
+	DefaultRetryDelay     time.Duration
+	EnableDelayQueue      bool
+	MaxAllowedDelay       time.Duration
+	MaxMessages           int
+	EnableDeadLetterQueue bool
+}
+
+type QueueMetadata struct {
+	CurrentConsumerCount uint64
+	TotalPublished       uint64
+	TotalConsumed        uint64
+}
+
+```
+this types change the whole functionality in our broker. now our plan for this phase is
+
+1. Queue Manager
+    - Create/Delete/Get/List queues.
+2. Publish flow
+    - Validate queue configuration (capacity, delay, etc.).
+3. Dispatcher
+    - Dispatch messages from the correct queue.
+4. Delay scheduler
+    - Make delayed messages eligible when their time arrives.
+5. TTL cleaner
+    - Remove expired messages.
+6. Metadata updates
+    - Keep queue statistics accurate.
+7. WAL & Snapshot integration
+    - Ensure all queue operations are persisted and recoverable.
+
+now we introduce a new service which call as publisher. now we separate the producer logic. from this change now producer only responsibility is receive packets and creating message, commit in wal, append in queue, check queue and notify dispatcher is all manage by publisher. so publisher is responsible for process message and prepare it.
+
+Flows look like this
+```
+Producer
+    │
+    ▼
+Publish(queueName, message)
+    │
+    ├── 1. Get Queue
+    │
+    ├── 2. Validate Queue Capacity
+    │
+    ├── 3. Validate Delay
+    │
+    ├── 4. Create Broker Message
+    │
+    ├── 5. WAL Commit
+    │
+    ├── 6. Store Message
+    │
+    ├── 7. Update Metadata
+    │
+    └── 8. Notify Dispatcher
+```
+
+we also evolve our protocol system. we write structs for every protocol type which help us to make this scalable. this design inspired by http protocol. where they have a type for every request which come and they understand what action they need to perform like(GET, POST, PUT, UPDATE, DELETE). it's help user to understand the purpose of every request which they send and what gonna happen with it.
+
+so now we have multiple packet types CreateQueueRequest, PublishRequest, AckRequest, NackRequest, DeleteQueueRequest.
+
+introduce new rule for project
+
+<b>Receiver never changes broker state directly.</b>
+
+we also change message update process as well like we avoid extra looping over every update we need to do in message and every message related functionality own by queue itself not by broker. In v6 we change the whole work flow and responsibility.
+
+introduce new rule for project
+
+<b>Independent resources have it own Mutex</b>
+
+we introduce mutex in storage as well. so, now every resource have its own concurrency. no one depend on other resource.
+
+why we need this rule?
+
+in V0.6 unintentionally we arrived at a pattern that's used in many storage engines and databases:
+- Public/orchestrating methods acquire the appropriate locks.
+- Private/helper methods assume the lock is already held and focus only on manipulating state.

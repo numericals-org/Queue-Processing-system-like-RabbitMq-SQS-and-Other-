@@ -5,6 +5,16 @@ import (
 	"time"
 )
 
+type QueueConfig struct {
+	MaxDeliveryAttempt    int
+	VisibilityTimeout     time.Duration
+	DefaultRetryDelay     time.Duration
+	EnableDelayQueue      bool
+	MaxAllowedDelay       time.Duration
+	MaxMessages           int
+	EnableDeadLetterQueue bool
+}
+
 // Type related to Consumers and Producers
 
 type Status int
@@ -28,20 +38,11 @@ type Consumer struct {
 	Conn       net.Conn
 	ConsumerId string
 	Status     Status
+
+	SubscribedQueues []string
 }
 
 // Type related Messages
-
-type Mtype int
-
-const (
-	QUEUE Mtype = iota
-	REGISTER_P
-	REGISTER_C
-	ACKNOWLEDGE
-	DISAVOW
-	C_STATUS
-)
 
 type MProgress int
 
@@ -51,13 +52,6 @@ const (
 	PROCESS
 	DELETE
 )
-
-type Packet struct {
-	Type       Mtype
-	MessageId  string
-	Content    []byte
-	RetryAfter time.Duration
-}
 
 type Message struct {
 	MessageId           string
@@ -69,6 +63,7 @@ type Message struct {
 	LastConsumerId      string
 	RetryAfter          time.Duration
 	RetrieveAt          time.Time
+	ExpireAt            time.Time
 }
 
 // types related to WAL(write ahead logs)
@@ -87,8 +82,11 @@ const (
 )
 
 type WALEvent struct {
-	WalId      uint64
-	EventType  WALEType
+	WalId     uint64
+	EventType WALEType
+
+	QueueName string
+
 	MessageId  string
 	ConsumerId string
 	Message    *Message

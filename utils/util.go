@@ -3,6 +3,7 @@ package utils
 import (
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -37,4 +38,10 @@ func SortFilesArray(files []os.DirEntry) []os.DirEntry {
 	})
 
 	return files
+}
+
+func TestName(name string, pattern string) bool {
+	re := regexp.MustCompile(pattern)
+	got := re.MatchString(name)
+	return got
 }

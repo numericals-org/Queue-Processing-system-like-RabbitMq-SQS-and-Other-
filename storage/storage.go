@@ -18,7 +18,8 @@ type Storage interface {
 }
 
 func (w *WAL) Append(event types.WALEvent) error {
-
+	w.Mu.Lock()
+	defer w.Mu.Unlock()
 	event.WalId = w.NextEventID
 	w.NextEventID++
 	payload, err := json.Marshal(event)
@@ -66,6 +67,9 @@ func (w *WAL) Append(event types.WALEvent) error {
 }
 
 func (w *WAL) Replay(LastAppliedEventID uint64, path string) ([]types.WALEvent, uint64, error) {
+	w.Mu.Lock()
+	defer w.Mu.Unlock()
+
 	filepath := w.walFilePath + path
 	file, err := os.Open(filepath)
 	var highestNumberId uint64
@@ -120,6 +124,9 @@ func (w *WAL) Replay(LastAppliedEventID uint64, path string) ([]types.WALEvent, 
 }
 
 func (w *WAL) Close() error {
+	w.Mu.Lock()
+	defer w.Mu.Unlock()
+
 	if w.file != nil {
 		return w.file.Close()
 	}

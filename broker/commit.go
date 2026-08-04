@@ -8,11 +8,12 @@ import (
 	"github.com/numericals/queueSys/types"
 )
 
-func (b *Broker) Commit(task types.WALEType, messageId string, consumerId string, msg *types.Message) {
+func (b *Broker) Commit(task types.WALEType, messageId string, consumerId string, msg *types.Message, QueueName string) {
 	err := b.Storage.Append(types.WALEvent{
 		EventType:  task,
 		MessageId:  messageId,
 		ConsumerId: consumerId,
+		QueueName:  QueueName,
 		Time:       time.Now(),
 		Message:    msg,
 	})

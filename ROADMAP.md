@@ -88,10 +88,10 @@ A lightweight, durable, and extensible message broker built from scratch in Go. 
 
 ### Remaining
 - ✅ Startup Recovery Flow
-- ⬜ Crash Recovery Tests
-- ⬜ Integration Tests
+- ✅ Crash Recovery Tests
+- ✅ Integration Tests
 
-**Status:** In Progress
+**Status:** Complete
 
 ---
 
@@ -102,7 +102,6 @@ A lightweight, durable, and extensible message broker built from scratch in Go. 
 - ⬜ Queue Configuration
 - ⬜ Queue Metadata
 - ⬜ Delay Queue
-- ⬜ Priority Queue
 
 **Status:** Planned
 
@@ -111,6 +110,7 @@ A lightweight, durable, and extensible message broker built from scratch in Go. 
 # v0.7 — Routing
 
 ## Features
+- ⬜ Priority Queue
 - ⬜ Exchange System
 - ⬜ Direct Exchange
 - ⬜ Fanout Exchange
