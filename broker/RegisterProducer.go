@@ -15,4 +15,7 @@ func (b *Broker) RegisterProducer(conn net.Conn) {
 		Conn:       conn,
 		ProducerId: uuid.New().String(),
 	})
+
+	b.WakeDispatcher()
+	return
 }

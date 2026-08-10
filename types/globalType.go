@@ -15,6 +15,8 @@ type QueueConfig struct {
 	EnableDeadLetterQueue bool
 }
 
+type QueueOption func(*QueueConfig)
+
 // Type related to Consumers and Producers
 
 type Status int

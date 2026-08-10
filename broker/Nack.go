@@ -1,8 +1,23 @@
 package broker
 
-import "github.com/numericals/queueSys/types"
+import (
+	"encoding/json"
+	"net"
 
-func (b *Broker) Nack(request *types.NackRequest, consumer *types.Consumer) error {
+	"github.com/numericals/queueSys/types"
+)
+
+func (b *Broker) Nack(payload json.RawMessage, conn net.Conn) error {
+
+	var request types.NackRequest
+
+	if err := json.Unmarshal(payload, &request); err != nil {
+		return err
+	}
+
+	consumer := b.FindConsumerByConn(conn)
+	b.UpdateConsumerStatus(consumer, types.IDLE)
+
 	Queue, err := b.GetQueue(request.QueueName)
 	if err != nil {
 		return err

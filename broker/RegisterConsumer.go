@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 
@@ -8,7 +9,14 @@ import (
 	"github.com/numericals/queueSys/types"
 )
 
-func (b *Broker) RegisterConsumer(request types.RegisterConsumerRequest, conn net.Conn) error {
+func (b *Broker) RegisterConsumer(payload json.RawMessage, conn net.Conn) error {
+
+	var request types.RegisterConsumerRequest
+
+	if err := json.Unmarshal(payload, &request); err != nil {
+		return err
+	}
+
 	b.Mu.Lock()
 	defer b.Mu.Unlock()
 
@@ -25,5 +33,6 @@ func (b *Broker) RegisterConsumer(request types.RegisterConsumerRequest, conn ne
 		SubscribedQueues: request.Queues,
 	})
 
+	b.WakeDispatcher()
 	return nil
 }

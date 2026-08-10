@@ -7,39 +7,54 @@ import (
 	types "github.com/numericals/queueSys/types"
 )
 
-func (b *Broker) GetEarliestMessage() *types.Message {
-	for i := range b.Messages {
-		msg := &b.Messages[i]
+func (q *Queue) FindReadyMessage() (int, error) {
+	now := time.Now()
+	for i := range q.Messages {
+		message := &q.Messages[i]
 
-		if msg.Progress != types.WAITING && msg.Progress != types.READY {
-			fmt.Println("type is wrong", msg)
+		if !message.ExpireAt.IsZero() && !message.ExpireAt.After(now) {
+			message.Progress = types.DELETE
 			continue
 		}
 
-		if time.Now().Before(msg.RetrieveAt) {
-			fmt.Println("Time", msg.RetrieveAt)
-			fmt.Println("come before time", msg)
+		if message.DeliveryAttempts >= q.Config.MaxDeliveryAttempt {
+			message.Progress = types.DELETE
 			continue
 		}
 
-		return msg
+		if message.Progress == types.READY {
+			return i, nil
+		}
+
+		if message.Progress == types.WAITING &&
+			!message.RetrieveAt.After(now) {
+			return i, nil
+		}
+
 	}
-	return nil
+
+	return -1, fmt.Errorf("no ready message")
 }
 
-func (b *Broker) UpdateMessageProgress(progress types.MProgress, id string, consumerId string) {
-	// b.Mu.Lock()
-	for i := range b.Messages {
-		message := &b.Messages[i]
-		if message.MessageId == id {
-			message.Progress = progress
-			message.ConsumerId = consumerId
-			message.DeliveryAttempts++
-			message.ProcessingStartedAt = time.Now()
-			return
-		}
-	}
-	// b.Mu.Unlock()
+// func (b *Broker) MarkMessageProcessing(messageId string, consumerId string, ProcessingStartedAt time.Time) {
+// 	for i := range b.Messages {
+// 		message := &b.Messages[i]
+// 		if message.MessageId == messageId {
+// 			message.Progress = types.PROCESS
+// 			message.ConsumerId = consumerId
+// 			message.ProcessingStartedAt = ProcessingStartedAt
+// 			return
+// 		}
+// 	}
+// }
+
+func (q *Queue) DispatchMessage(index int, consumerId string) {
+	message := &q.Messages[index]
+
+	message.ConsumerId = consumerId
+	message.Progress = types.PROCESS
+	message.ProcessingStartedAt = time.Now()
+	message.DeliveryAttempts++
 }
 
 func (q *Queue) RemoveMessage(messageIndex int) error {
@@ -79,32 +94,6 @@ func (q *Queue) FindMessageById(messageId string) *types.Message {
 	}
 
 	return nil
-}
-
-func (b *Broker) RequeueMessage(messageId string, consumerId string) {
-	for i := range b.Messages {
-		message := &b.Messages[i]
-		if message.MessageId == messageId {
-			message.Progress = types.WAITING
-			message.LastConsumerId = consumerId
-			message.ConsumerId = ""
-
-			return
-		}
-	}
-}
-
-func (b *Broker) MarkMessageProcessing(messageId string, consumerId string, ProcessingStartedAt time.Time) {
-	for i := range b.Messages {
-		message := &b.Messages[i]
-		if message.MessageId == messageId {
-			message.Progress = types.PROCESS
-			message.ConsumerId = consumerId
-			message.ProcessingStartedAt = ProcessingStartedAt
-
-			return
-		}
-	}
 }
 
 func (q *Queue) FindMessageIndex(messageId string) (int, error) {

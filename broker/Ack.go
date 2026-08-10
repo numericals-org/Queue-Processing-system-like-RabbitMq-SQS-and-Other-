@@ -1,10 +1,21 @@
 package broker
 
 import (
+	"encoding/json"
+	"net"
+
 	"github.com/numericals/queueSys/types"
 )
 
-func (b *Broker) Ack(request *types.AckRequest, consumer *types.Consumer) error {
+func (b *Broker) Ack(payload json.RawMessage, conn net.Conn) error {
+
+	var request types.AckRequest
+	if err := json.Unmarshal(payload, &request); err != nil {
+		return err
+	}
+
+	consumer := b.FindConsumerByConn(conn)
+
 	Queue, err := b.GetQueue(request.QueueName)
 	if err != nil {
 		return err

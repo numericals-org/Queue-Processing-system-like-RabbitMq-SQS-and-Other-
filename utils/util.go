@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/numericals/queueSys/types"
 )
 
 func ExtractNumber(s string) int {
@@ -44,4 +46,10 @@ func TestName(name string, pattern string) bool {
 	re := regexp.MustCompile(pattern)
 	got := re.MatchString(name)
 	return got
+}
+
+func WithRequestConfig(cfg types.QueueConfig) types.QueueOption {
+	return func(c *types.QueueConfig) {
+		*c = cfg // Overwrites the defaults with the request values
+	}
 }

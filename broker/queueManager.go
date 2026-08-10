@@ -7,9 +7,7 @@ import (
 	"github.com/numericals/queueSys/utils"
 )
 
-type QueueOption func(*types.QueueConfig)
-
-func (b *Broker) CreateQueue(name string, userConfig ...QueueOption) error {
+func (b *Broker) CreateQueue(name string, userConfig ...types.QueueOption) error {
 
 	verify := utils.TestName(name, `^[a-z0-9-]+$`)
 	if !verify {

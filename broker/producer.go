@@ -22,7 +22,7 @@ func (b *Broker) FindProducerByConn(conn net.Conn) *types.Producer {
 	defer b.Mu.RUnlock()
 	for i, p := range b.Producers {
 		if p.Conn == conn {
-			return p
+			return &b.Producers[i]
 		}
 	}
 

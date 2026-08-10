@@ -3,24 +3,24 @@ package broker
 import (
 	"fmt"
 	"net"
+	"slices"
 
 	types "github.com/numericals/queueSys/types"
 )
 
-func (b *Broker) FindConsumer() (*types.Consumer, bool) {
-	n := len(b.Consumers)
-	if n <= 0 {
-		return nil, false
-	}
+func (b *Broker) FindIdleConsumer(queueName string) *types.Consumer {
 	for i := range b.Consumers {
 		consumer := b.Consumers[i]
 		if consumer.Status == types.IDLE {
+			if !slices.Contains(consumer.SubscribedQueues, queueName) {
+				continue
+			}
 			b.Consumers = append((b.Consumers)[:i], (b.Consumers)[i+1:]...)
 			b.Consumers = append(b.Consumers, consumer)
-			return &(b.Consumers)[len(b.Consumers)-1], true
+			return &(b.Consumers)[len(b.Consumers)-1]
 		}
 	}
-	return nil, false
+	return nil
 }
 
 func (b *Broker) FindConsumerByConn(conn net.Conn) *types.Consumer {
@@ -49,9 +49,7 @@ func (b *Broker) UpdateConsumerStatusById(status types.Status, consumerId string
 }
 
 func (b *Broker) UpdateConsumerStatus(consumer *types.Consumer, status types.Status) {
-	b.Mu.Lock()
 	consumer.Status = status
-	b.Mu.Unlock()
 }
 
 func (b *Broker) FindConsumerIndex(conn net.Conn) (int, error) {
