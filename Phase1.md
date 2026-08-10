@@ -19,21 +19,21 @@
 
 ✅ Publish
 
-⬜ Ack
+✅ Ack
 
-⬜ Nack
+✅ Nack
 
-⬜ RegisterProducer
+✅ RegisterProducer
 
-⬜ RegisterConsumer
-
-------------------------
-
-⬜ Receiver Refactor
+✅ RegisterConsumer
 
 ------------------------
 
-⬜ Dispatcher
+✅ Receiver Refactor
+
+------------------------
+
+✅ Dispatcher
 
 ⬜ RetryWatcher
 

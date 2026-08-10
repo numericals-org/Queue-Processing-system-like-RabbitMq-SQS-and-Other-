@@ -34,13 +34,13 @@ func main() {
 	}
 
 	Broker := Broker.Broker{
-		Notify:             make(chan bool),
-		MaxDeliveryAttempt: 3,
-		VisibilityTimeout:  30,
-		DefaultRetryDelay:  30 * time.Second,
-		Storage:            wal,
-		SnapshotNotify:     make(chan struct{}, 1),
-		Ctx:                ctx,
+		Notify:                   make(chan bool),
+		DefaultMaxAllowedDelay:   3,
+		DefaultVisibilityTimeout: 30,
+		DefaultRetryDelay:        30 * time.Second,
+		Storage:                  wal,
+		SnapshotNotify:           make(chan struct{}, 1),
+		Ctx:                      ctx,
 	}
 
 	SnapshotManager := service.NewSnapshotManager(wal, &Broker)
