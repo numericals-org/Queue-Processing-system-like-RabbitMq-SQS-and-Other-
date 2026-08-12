@@ -78,7 +78,7 @@ func (b *Broker) RequeueConsumerMessages(consumerId string) {
 
 			if msg.ConsumerId == consumerId &&
 				msg.Progress == types.PROCESS {
-
+				b.Commit(types.TASK_RETRY_READY, msg.MessageId, consumerId, nil, queue.Name)
 				queue.RequeueMessage(i)
 			}
 		}

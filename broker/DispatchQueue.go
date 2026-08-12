@@ -21,16 +21,11 @@ func (b *Broker) DispatchQueue(queue *Queue) {
 	messageId := queue.Messages[i].MessageId
 	queue.Mu.Unlock()
 
-	b.Mu.Lock()
-	consumer := b.FindIdleConsumer(queue.Name)
+	consumer := b.ReserveIdleConsumer(queue.Name)
 	if consumer == nil {
-		b.Mu.Unlock()
 		log.Println("no consumer find")
 		return
 	}
-
-	b.UpdateConsumerStatus(consumer, types.BUSY)
-	b.Mu.Unlock()
 
 	queue.Mu.Lock()
 
@@ -38,9 +33,7 @@ func (b *Broker) DispatchQueue(queue *Queue) {
 
 	if err != nil {
 		queue.Mu.Unlock()
-		b.Mu.Lock()
 		b.UpdateConsumerStatus(consumer, types.IDLE)
-		b.Mu.Unlock()
 		log.Println("no ready message")
 		return
 	}
@@ -49,9 +42,7 @@ func (b *Broker) DispatchQueue(queue *Queue) {
 
 	if message.Progress != types.WAITING && message.Progress != types.READY {
 		queue.Mu.Unlock()
-		b.Mu.Lock()
 		b.UpdateConsumerStatus(consumer, types.IDLE)
-		b.Mu.Unlock()
 		log.Println("Message picked by other dispatcher")
 		return
 	}
@@ -62,26 +53,14 @@ func (b *Broker) DispatchQueue(queue *Queue) {
 
 	payload, err := json.Marshal(message)
 	if err != nil {
+		b.UpdateConsumerStatus(consumer, types.IDLE)
 		log.Println("unable to marshal the json", err)
 		return
 	}
 
 	_, err = consumer.Conn.Write(payload)
 	if err != nil {
-		b.Mu.Lock()
-		b.UpdateConsumerStatus(consumer, types.DOWN)
-		b.Mu.Unlock()
-		queue.Mu.Lock()
-		i, err = queue.FindMessageIndex(messageId)
-
-		if err != nil {
-			queue.Mu.Unlock()
-			log.Println("no ready message")
-			return
-		}
-		queue.RequeueMessage(i)
-		queue.Mu.Unlock()
-		b.WakeDispatcher()
+		b.HandleDisconnect(consumer.Conn)
 		log.Println("Failed to write to consumer:", err)
 		return
 	}

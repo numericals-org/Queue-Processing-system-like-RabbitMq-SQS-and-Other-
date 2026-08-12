@@ -22,11 +22,11 @@ func (b *Broker) Ack(payload json.RawMessage, conn net.Conn) error {
 	}
 
 	Queue.Mu.Lock()
-	defer Queue.Mu.Unlock()
 
 	index, err := Queue.FindMessageIndex(request.MessageId)
 
 	if err != nil {
+		Queue.Mu.Unlock()
 		return err
 	}
 
@@ -34,9 +34,15 @@ func (b *Broker) Ack(payload json.RawMessage, conn net.Conn) error {
 	err = Queue.RemoveMessage(index)
 
 	if err != nil {
+		Queue.Mu.Unlock()
 		return err
 	}
 
 	Queue.Metadata.TotalConsumed++
+	Queue.Mu.Unlock()
+
+	b.UpdateConsumerStatus(consumer, types.IDLE)
+	b.WakeDispatcher()
+
 	return nil
 }

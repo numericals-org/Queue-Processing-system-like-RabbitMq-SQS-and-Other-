@@ -16,7 +16,6 @@ func (b *Broker) Nack(payload json.RawMessage, conn net.Conn) error {
 	}
 
 	consumer := b.FindConsumerByConn(conn)
-	b.UpdateConsumerStatus(consumer, types.IDLE)
 
 	Queue, err := b.GetQueue(request.QueueName)
 	if err != nil {
@@ -24,11 +23,10 @@ func (b *Broker) Nack(payload json.RawMessage, conn net.Conn) error {
 	}
 
 	Queue.Mu.Lock()
-	defer Queue.Mu.Unlock()
-
 	index, err := Queue.FindMessageIndex(request.MessageId)
 
 	if err != nil {
+		Queue.Mu.Unlock()
 		return err
 	}
 
@@ -43,6 +41,11 @@ func (b *Broker) Nack(payload json.RawMessage, conn net.Conn) error {
 	// }
 
 	Queue.RequeueMessage(index)
+	Queue.Mu.Unlock()
+
+	b.UpdateConsumerStatus(consumer, types.IDLE)
+
+	b.WakeDispatcher()
 
 	return nil
 }

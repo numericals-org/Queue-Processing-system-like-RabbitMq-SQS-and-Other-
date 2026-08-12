@@ -8,14 +8,17 @@ import (
 	types "github.com/numericals/queueSys/types"
 )
 
-func (b *Broker) FindIdleConsumer(queueName string) *types.Consumer {
+func (b *Broker) ReserveIdleConsumer(queueName string) *types.Consumer {
+	b.Mu.Lock()
+	defer b.Mu.Unlock()
 	for i := range b.Consumers {
 		consumer := b.Consumers[i]
 		if consumer.Status == types.IDLE {
 			if !slices.Contains(consumer.SubscribedQueues, queueName) {
 				continue
 			}
-			b.Consumers = append((b.Consumers)[:i], (b.Consumers)[i+1:]...)
+			consumer.Status = types.BUSY
+			b.Consumers = append(b.Consumers[:i], (b.Consumers)[i+1:]...)
 			b.Consumers = append(b.Consumers, consumer)
 			return &(b.Consumers)[len(b.Consumers)-1]
 		}
@@ -49,6 +52,8 @@ func (b *Broker) UpdateConsumerStatusById(status types.Status, consumerId string
 }
 
 func (b *Broker) UpdateConsumerStatus(consumer *types.Consumer, status types.Status) {
+	b.Mu.Lock()
+	defer b.Mu.Unlock()
 	consumer.Status = status
 }
 
