@@ -114,3 +114,10 @@ func (q *Queue) RequeueMessage(MessageIndex int) {
 	message.RetrieveAt = time.Now().Add(message.RetryAfter)
 	message.Progress = types.WAITING
 }
+
+func (q *Queue) RetrieveMessage(msg *types.Message) {
+	msg.LastConsumerId = msg.ConsumerId
+	msg.ConsumerId = ""
+	msg.RetrieveAt = time.Now().Add(msg.RetryAfter)
+	msg.Progress = types.WAITING
+}

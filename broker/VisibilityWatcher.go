@@ -16,28 +16,42 @@ func (b *Broker) VisibilityWatcher() {
 		case <-b.Ctx.Done():
 			return
 		case <-ticker.C:
-			retrieved := false
-			b.Mu.Lock()
+			b.Mu.RLock()
+			queues := make([]*Queue, 0, len(b.Queues))
+			for _, q := range b.Queues {
+				queues = append(queues, q)
+			}
+			b.Mu.RUnlock()
 
-			for i := range b.Messages {
-				msg := &b.Messages[i]
-				if msg.Progress != types.PROCESS {
-					continue
+			expiredConsumerIds := []string{}
+
+			for _, queue := range queues {
+				queue.Mu.Lock()
+				for i := range queue.Messages {
+					msg := &queue.Messages[i]
+
+					if msg.Progress != types.PROCESS {
+						continue
+					}
+
+					timeout := time.Since(msg.ProcessingStartedAt)
+
+					if timeout >= time.Duration(queue.Config.VisibilityTimeout)*time.Second {
+						consumerId := msg.ConsumerId
+						fmt.Println("got new message in visibitlity watcher", msg.RetrieveAt)
+						b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil, queue.Name)
+						queue.RetrieveMessage(msg)
+						expiredConsumerIds = append(expiredConsumerIds, consumerId)
+					}
 				}
-
-				timeout := time.Since(msg.ProcessingStartedAt)
-
-				if timeout >= time.Duration(b.VisibilityTimeout)*time.Second {
-					fmt.Println("got new message in visibitlity watcher", msg.RetrieveAt)
-					b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil)
-					b.RetrieveMessage(msg.MessageId, msg.ConsumerId, msg.RetryAfter, types.TASK_TIMEOUT)
-					retrieved = true
-				}
+				queue.Mu.Unlock()
 			}
 
-			b.Mu.Unlock()
-			if retrieved == true {
-				b.Notify <- true
+			for _, consumerId := range expiredConsumerIds {
+				b.UpdateConsumerStatusById(consumerId, types.IDLE)
+			}
+			if len(expiredConsumerIds) > 0 {
+				b.WakeDispatcher()
 			}
 		}
 	}

@@ -38,7 +38,7 @@ func (b *Broker) FindConsumerByConn(conn net.Conn) *types.Consumer {
 	return nil
 }
 
-func (b *Broker) UpdateConsumerStatusById(status types.Status, consumerId string) error {
+func (b *Broker) UpdateConsumerStatusById(consumerId string, status types.Status) error {
 	b.Mu.Lock()
 	defer b.Mu.Unlock()
 	for i := range b.Consumers {
