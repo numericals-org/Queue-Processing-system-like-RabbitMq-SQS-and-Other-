@@ -1,28 +1,24 @@
 package broker
 
-import (
-	"time"
-
-	"github.com/numericals/queueSys/types"
-)
+import "github.com/numericals/queueSys/types"
 
 func (b *Broker) RecoverInFlightMessages() {
-	b.Mu.Lock()
-	for i := range b.Messages {
-		msg := &b.Messages[i]
-
-		if msg.Progress != types.PROCESS {
-			continue
-		}
-
-		msg.Progress = types.READY
-		msg.ConsumerId = ""
-		msg.ProcessingStartedAt = time.Time{}
+	b.Mu.RLock()
+	queues := make([]*Queue, 0, len(b.Queues))
+	for _, q := range b.Queues {
+		queues = append(queues, q)
 	}
-	b.Mu.Unlock()
-	select {
-	case b.Notify <- true:
-	case <-b.Ctx.Done():
-		return
+	b.Mu.RUnlock()
+
+	for _, queue := range queues {
+		queue.Mu.Lock()
+		for i := range queue.Messages {
+			msg := &queue.Messages[i]
+			if msg.Progress != types.PROCESS {
+				continue
+			}
+			queue.RetrieveMessage(msg)
+		}
+		queue.Mu.Unlock()
 	}
 }
