@@ -16,25 +16,33 @@ func (b *Broker) RetryWatcher() {
 		case <-b.Ctx.Done():
 			return
 		case <-ticker.C:
-			retrieved := false
-			b.Mu.Lock()
+			hasReadyMessage := false
+			b.Mu.RLock()
+			queues := make([]*Queue, 0, len(b.Queues))
+			for _, q := range b.Queues {
+				queues = append(queues, q)
+			}
+			b.Mu.RUnlock()
 
-			for i := range b.Messages {
-				msg := &b.Messages[i]
-				if msg.Progress != types.WAITING {
-					continue
-				}
+			now := time.Now()
+			for _, queue := range queues {
+				queue.Mu.RLock()
+				for i := range queue.Messages {
+					msg := &queue.Messages[i]
+					if msg.Progress != types.WAITING {
+						continue
+					}
 
-				if time.Now().After(msg.RetrieveAt) || time.Now().Equal(msg.RetrieveAt) && len(b.Consumers) > 0 {
-					fmt.Println("got new message in REtry watcher", msg.RetrieveAt)
-					b.Commit(types.TASK_RETRY_READY, msg.MessageId, msg.ConsumerId, nil)
-					retrieved = true
+					if !msg.RetrieveAt.After(now) {
+						fmt.Println("got new message in REtry watcher", msg.RetrieveAt)
+						hasReadyMessage = true
+					}
 				}
+				queue.Mu.RUnlock()
 			}
 
-			b.Mu.Unlock()
-			if retrieved == true {
-				b.Notify <- true
+			if hasReadyMessage == true {
+				b.WakeDispatcher()
 			}
 		}
 	}
