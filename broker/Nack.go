@@ -30,7 +30,10 @@ func (b *Broker) Nack(payload json.RawMessage, conn net.Conn) error {
 		return err
 	}
 
-	b.Commit(types.TASK_DISAVOW, request.MessageId, consumer.ConsumerId, nil, request.QueueName)
+	if err := b.Commit(types.TASK_DISAVOW, request.MessageId, consumer.ConsumerId, nil, request.QueueName, nil); err != nil {
+		Queue.Mu.Unlock()
+		return err
+	}
 
 	// Reserved for future adaptive retry support.
 	// Currently ignored by the broker.

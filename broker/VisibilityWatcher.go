@@ -39,7 +39,11 @@ func (b *Broker) VisibilityWatcher() {
 					if timeout >= time.Duration(queue.Config.VisibilityTimeout)*time.Second {
 						consumerId := msg.ConsumerId
 						fmt.Println("got new message in visibitlity watcher", msg.RetrieveAt)
-						b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil, queue.Name)
+						if err := b.Commit(types.TASK_TIMEOUT, msg.MessageId, msg.ConsumerId, nil, queue.Name, nil); err != nil {
+							queue.Mu.Unlock()
+							fmt.Println("commit failed in visibility watcher", err)
+							continue
+						}
 						queue.RetrieveMessage(msg)
 						expiredConsumerIds = append(expiredConsumerIds, consumerId)
 					}

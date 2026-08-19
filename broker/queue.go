@@ -2,6 +2,7 @@ package broker
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	types "github.com/numericals/queueSys/types"
@@ -78,7 +79,11 @@ func (b *Broker) RequeueConsumerMessages(consumerId string) {
 
 			if msg.ConsumerId == consumerId &&
 				msg.Progress == types.PROCESS {
-				b.Commit(types.TASK_RETRY_READY, msg.MessageId, consumerId, nil, queue.Name)
+				if err := b.Commit(types.TASK_RETRY_READY, msg.MessageId, consumerId, nil, queue.Name, nil); err != nil {
+					queue.Mu.Unlock()
+					log.Println(err)
+					continue
+				}
 				queue.RequeueMessage(i)
 			}
 		}

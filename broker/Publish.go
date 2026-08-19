@@ -55,7 +55,9 @@ func (b *Broker) Publish(payload json.RawMessage) error {
 		log.Println("Queue is full", Queue.Name)
 		return fmt.Errorf("Queue is full", Queue.Name)
 	}
-	b.Commit(types.TASK_QUEUE, "", "", msg, Queue.Name)
+	if err := b.Commit(types.TASK_QUEUE, "", "", msg, Queue.Name, nil); err != nil {
+		return err
+	}
 	Queue.Messages = append(Queue.Messages, *msg)
 	Queue.Metadata.TotalPublished++
 

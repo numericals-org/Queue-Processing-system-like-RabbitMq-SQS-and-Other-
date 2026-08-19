@@ -81,13 +81,16 @@ const (
 	TASK_CONSUMER_DOWN
 	TASK_DEAD_QUEUE
 	TASK_RETRY_READY
+	TASK_CREATE_QUEUE
+	TASK_DELETE_QUEUE
 )
 
 type WALEvent struct {
 	WalId     uint64
 	EventType WALEType
 
-	QueueName string
+	QueueName   string
+	QueueConfig *QueueConfig
 
 	MessageId  string
 	ConsumerId string

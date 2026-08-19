@@ -13,6 +13,10 @@ func (b *Broker) RegisterQueue(payload json.RawMessage) error {
 		return err
 	}
 
+	if err := b.Commit(types.TASK_CREATE_QUEUE, "", "", nil, request.QueueName, &request.QueueConfig); err != nil {
+		return err
+	}
+
 	if err := b.CreateQueue(request.QueueName, utils.WithRequestConfig(request.QueueConfig)); err != nil {
 		return err
 	}

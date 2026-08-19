@@ -7,23 +7,25 @@ import (
 	"github.com/numericals/queueSys/types"
 )
 
-func (b *Broker) Commit(task types.WALEType, messageId string, consumerId string, msg *types.Message, QueueName string) error {
+func (b *Broker) Commit(task types.WALEType, messageId string, consumerId string, msg *types.Message, QueueName string, QueueConfig *types.QueueConfig) error {
 	err := b.Storage.Append(types.WALEvent{
-		EventType:  task,
-		MessageId:  messageId,
-		ConsumerId: consumerId,
-		QueueName:  QueueName,
-		Time:       time.Now(),
-		Message:    msg,
+		EventType:   task,
+		MessageId:   messageId,
+		ConsumerId:  consumerId,
+		QueueName:   QueueName,
+		Time:        time.Now(),
+		Message:     msg,
+		QueueConfig: QueueConfig,
 	})
 
-	fmt.Print("Commit", messageId, consumerId)
-
 	if err != nil {
-		return fmt.Errorf("commit unsuccessfully", err)
+		return fmt.Errorf("commit unsuccessfully: %w", err)
 	}
 	b.EventsSinceLastSnapshot++
-	b.SnapshotNotify <- struct{}{}
+	select {
+	case b.SnapshotNotify <- struct{}{}:
+	default:
+	}
 
 	return nil
 }

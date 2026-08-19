@@ -30,7 +30,11 @@ func (b *Broker) Ack(payload json.RawMessage, conn net.Conn) error {
 		return err
 	}
 
-	b.Commit(types.TASK_ACK, request.MessageId, consumer.ConsumerId, nil, request.QueueName)
+	if err := b.Commit(types.TASK_ACK, request.MessageId, consumer.ConsumerId, nil, request.QueueName, nil); err != nil {
+		Queue.Mu.Unlock()
+		return err
+	}
+
 	err = Queue.RemoveMessage(index)
 
 	if err != nil {

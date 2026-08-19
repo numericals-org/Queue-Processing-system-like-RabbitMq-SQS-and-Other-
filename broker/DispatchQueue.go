@@ -47,7 +47,13 @@ func (b *Broker) DispatchQueue(queue *Queue) {
 		return
 	}
 
-	b.Commit(types.TASK_DISPATCH, message.MessageId, consumer.ConsumerId, nil, queue.Name)
+	if err := b.Commit(types.TASK_DISPATCH, message.MessageId, consumer.ConsumerId, nil, queue.Name, nil); err != nil {
+		queue.Mu.Unlock()
+		b.UpdateConsumerStatus(consumer, types.IDLE)
+		log.Println(err)
+		return
+	}
+
 	queue.DispatchMessage(i, consumer.ConsumerId)
 	queue.Mu.Unlock()
 
