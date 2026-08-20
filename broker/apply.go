@@ -9,7 +9,6 @@ import (
 
 func (b *Broker) Apply(event types.WALEvent) error {
 	switch event.EventType {
-
 	case types.TASK_CREATE_QUEUE:
 		if event.QueueConfig == nil {
 			return fmt.Errorf("missing QueueConfig for TASK_CREATE_QUEUE")
@@ -76,6 +75,15 @@ func (b *Broker) Apply(event types.WALEvent) error {
 			return err
 		}
 		if err := queue.ApplyRequeueMessage(event.MessageId, event.ConsumerId, event.Time); err != nil {
+			return err
+		}
+	case types.TASK_DEAD_QUEUE:
+		queue, err := b.GetQueue(event.QueueName)
+		if err != nil {
+			return err
+		}
+
+		if err := queue.ApplyDeadLetterMessage(event.MessageId); err != nil {
 			return err
 		}
 	}

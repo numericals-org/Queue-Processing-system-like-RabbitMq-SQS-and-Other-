@@ -53,6 +53,7 @@ const (
 	WAITING
 	PROCESS
 	DELETE
+	DEAD
 )
 
 type Message struct {

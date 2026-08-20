@@ -47,4 +47,5 @@ type QueueMetadata struct {
 	CurrentConsumerCount uint64
 	TotalPublished       uint64
 	TotalConsumed        uint64
+	TotalDeadLettered    uint64
 }

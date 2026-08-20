@@ -19,7 +19,7 @@ func (q *Queue) FindReadyMessage() (int, error) {
 		}
 
 		if message.DeliveryAttempts >= q.Config.MaxDeliveryAttempt {
-			message.Progress = types.DELETE
+			message.Progress = types.DEAD
 			continue
 		}
 
@@ -79,7 +79,7 @@ func (b *Broker) RequeueConsumerMessages(consumerId string) {
 
 			if msg.ConsumerId == consumerId &&
 				msg.Progress == types.PROCESS {
-				if err := b.Commit(types.TASK_RETRY_READY, msg.MessageId, consumerId, nil, queue.Name, nil); err != nil {
+				if err := b.Commit(types.TASK_CONSUMER_DOWN, msg.MessageId, consumerId, nil, queue.Name, nil); err != nil {
 					queue.Mu.Unlock()
 					log.Println(err)
 					continue
@@ -175,6 +175,23 @@ func (q *Queue) ApplyRequeueMessage(messageId string, consumerId string, eventTi
 	msg.ConsumerId = ""
 	msg.RetrieveAt = eventTime.Add(msg.RetryAfter)
 	msg.Progress = types.WAITING
+
+	return nil
+}
+
+func (q *Queue) ApplyDeadLetterMessage(messageId string) error {
+	q.Mu.Lock()
+	defer q.Mu.Unlock()
+
+	index, err := q.FindMessageIndex(messageId)
+	if err != nil {
+		return err
+	}
+
+	message := q.Messages[index]
+
+	q.DeadLetterQueue = append(q.DeadLetterQueue, message)
+	q.Messages = append(q.Messages[:index], q.Messages[index+1:]...)
 
 	return nil
 }
