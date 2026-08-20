@@ -12,6 +12,10 @@ func (b *Broker) UnregisterQueue(payload json.RawMessage) error {
 		return err
 	}
 
+	if err := b.Commit(types.TASK_DELETE_QUEUE, "", "", nil, request.QueueName, &request.QueueConfig); err != nil {
+		return err
+	}
+
 	if err := b.DeleteQueue(request.QueueName); err != nil {
 		return err
 	}

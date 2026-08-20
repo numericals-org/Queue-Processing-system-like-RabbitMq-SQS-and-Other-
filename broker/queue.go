@@ -126,3 +126,55 @@ func (q *Queue) RetrieveMessage(msg *types.Message) {
 	msg.RetrieveAt = time.Now().Add(msg.RetryAfter)
 	msg.Progress = types.WAITING
 }
+
+func (q *Queue) ApplyDispatchMessage(messageId string, consumerId string, processingStartedAt time.Time) error {
+	q.Mu.Lock()
+	defer q.Mu.Unlock()
+
+	index, err := q.FindMessageIndex(messageId)
+	if err != nil {
+		return err
+	}
+
+	message := &q.Messages[index]
+
+	message.ConsumerId = consumerId
+	message.Progress = types.PROCESS
+	message.ProcessingStartedAt = processingStartedAt
+	message.DeliveryAttempts++
+
+	return nil
+}
+
+func (q *Queue) ApplyAckMessage(messageId string) error {
+	q.Mu.Lock()
+	defer q.Mu.Unlock()
+
+	index, err := q.FindMessageIndex(messageId)
+	if err != nil {
+		return err
+	}
+
+	if err := q.RemoveMessage(index); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (q *Queue) ApplyRequeueMessage(messageId string, consumerId string, eventTime time.Time) error {
+	q.Mu.Lock()
+	defer q.Mu.Unlock()
+
+	msg := q.FindMessageById(messageId)
+	if msg == nil {
+		return fmt.Errorf("message %s not found", messageId)
+	}
+
+	msg.LastConsumerId = consumerId
+	msg.ConsumerId = ""
+	msg.RetrieveAt = eventTime.Add(msg.RetryAfter)
+	msg.Progress = types.WAITING
+
+	return nil
+}
