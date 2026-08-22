@@ -84,6 +84,7 @@ const (
 	TASK_RETRY_READY
 	TASK_CREATE_QUEUE
 	TASK_DELETE_QUEUE
+	TASK_EXPIRE
 )
 
 type WALEvent struct {
